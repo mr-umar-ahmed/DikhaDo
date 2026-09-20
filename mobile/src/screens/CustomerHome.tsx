@@ -5,7 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { CategoryTile } from '@/components/CategoryTile';
 import { Notice, PaperScreen } from '@/components/paper';
-import { getJob, isOpen, lastJobId } from '@/lib/requests';
+import { openJobId } from '@/lib/requests';
 import { childrenOf, topLevel } from '@/data/catalog';
 import { space } from '@/theme/tokens';
 
@@ -19,10 +19,7 @@ export function CustomerHome() {
   useFocusEffect(
     useCallback(() => {
       let alive = true;
-      lastJobId()
-        .then((id) => (id ? getJob(id) : null))
-        .then((job) => alive && setActiveJob(job && isOpen(job.status) ? job.id : null))
-        .catch(() => {});
+      openJobId().then((id) => alive && setActiveJob(id));
       return () => {
         alive = false;
       };

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
 import { byCode } from '@/data/catalog';
-import { nearbyWorkers, type NearbyWorker } from '@/lib/api';
+import { BackendError, cachedWorkers, nearbyWorkers, type NearbyWorker } from '@/lib/api';
 import { currentPoint, formatDistance, LocationDenied } from '@/lib/location';
 import { usePrefs } from '@/lib/prefs';
 import { colors, radius, space, touch } from '@/theme/tokens';
@@ -14,7 +14,8 @@ import { typeScale } from '@/theme/type';
 type State =
   | { kind: 'loading' }
   | { kind: 'ready'; workers: NearbyWorker[]; stale: boolean }
-  | { kind: 'no-location' }
+  | { kind: 'location-blocked' }
+  | { kind: 'location-off' }
   | { kind: 'error' };
 
 export default function Workers() {
@@ -32,7 +33,11 @@ export default function Workers() {
       const result = await nearbyWorkers(at.lat, at.lng, code, lang);
       setState({ kind: 'ready', ...result });
     } catch (e) {
-      setState({ kind: e instanceof LocationDenied ? 'no-location' : 'error' });
+      // Whatever went wrong, phone numbers from the last visit are still worth showing.
+      const cached = await cachedWorkers(code);
+      if (cached) return setState({ kind: 'ready', workers: cached, stale: true });
+      if (e instanceof LocationDenied) setState({ kind: e.canAskAgain ? 'location-off' : 'location-blocked' });
+      else setState({ kind: e instanceof BackendError ? 'error' : 'location-off' });
     }
   }, [code, lang]);
 
@@ -51,8 +56,11 @@ export default function Workers() {
           <Text style={[type.body, { color: colors.onPaperMuted }]}>{t('finding')}</Text>
         </View>
       )}
-      {state.kind === 'no-location' && (
-        <Notice tone="warn" title={t('locationDeniedTitle')} body={t('locationDeniedBody')} action={t('tryAgain')} onAction={load} />
+      {state.kind === 'location-off' && (
+        <Notice tone="warn" title={t('locationOffTitle')} body={t('locationOffBody')} action={t('tryAgain')} onAction={load} />
+      )}
+      {state.kind === 'location-blocked' && (
+        <Notice tone="warn" title={t('locationDeniedTitle')} body={t('locationBlockedBody')} action={t('openSettings')} onAction={() => Linking.openSettings()} />
       )}
       {state.kind === 'error' && (
         <Notice tone="warn" title={t('backendErrorTitle')} body={t('backendErrorBody')} action={t('tryAgain')} onAction={load} />
@@ -107,7 +115,7 @@ function WorkerCard({ worker: w, problem, code }: { worker: NearbyWorker; proble
             {w.rating_count > 0 ? `${Number(w.rating_avg).toFixed(1)} (${w.rating_count})` : t('noRatings')}
           </Text>
         </View>
-        <Text style={[type.small, { color: colors.onPaperMuted }]}>{t('jobsDone', { count: w.jobs_done })}</Text>
+        <Text style={[type.small, { color: colors.onPaperMuted }]}>{w.jobs_done === 1 ? t('jobsDoneOne') : t('jobsDone', { count: w.jobs_done })}</Text>
         <Text style={[type.small, { color: w.tier === 'new' ? colors.onPaperMuted : colors.stampGreen }]}>{tierLabel}</Text>
       </View>
 

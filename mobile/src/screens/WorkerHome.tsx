@@ -1,21 +1,22 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { AppState, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
 import { WorkerInbox } from '@/components/WorkerInbox';
 import { topLevel } from '@/data/catalog';
-import { heartbeat, registerWorker, type WorkerProfile } from '@/lib/api';
-import { currentPoint, LocationDenied } from '@/lib/location';
+import { heartbeat, registerWorker, WorkerGone, type WorkerProfile } from '@/lib/api';
+import { currentPoint, LocationDenied, LocationUnavailable } from '@/lib/location';
 import { usePrefs } from '@/lib/prefs';
 import { colors, radius, space, touch } from '@/theme/tokens';
 import { typeScale } from '@/theme/type';
 
 const KEY = 'dikhado.worker.v1';
-// Customers see workers seen in the last two minutes, so beat well inside that window.
+// Customers see workers seen in the last ten minutes; beat far more often so location stays fresh.
 const BEAT_MS = 40_000;
 
 export function WorkerHome() {
@@ -38,7 +39,16 @@ export function WorkerHome() {
       />
     );
   }
-  return <Duty profile={profile} />;
+  return (
+    <Duty
+      profile={profile}
+      // The server no longer knows this worker: start again rather than sit "on duty" and invisible.
+      onGone={() => {
+        AsyncStorage.removeItem(KEY).catch(() => {});
+        setProfile(null);
+      }}
+    />
+  );
 }
 
 function WorkerSetup({ onDone }: { onDone: (p: WorkerProfile) => void }) {
@@ -74,7 +84,7 @@ function WorkerSetup({ onDone }: { onDone: (p: WorkerProfile) => void }) {
         <TextInput value={name} onChangeText={setName} style={[styles.input, type.body]} autoCapitalize="words" />
       </Field>
       <Field label={t('yourPhone')}>
-        <TextInput value={phone} onChangeText={setPhone} style={[styles.input, type.body]} keyboardType="phone-pad" maxLength={14} />
+        <TextInput value={phone} onChangeText={setPhone} style={[styles.input, type.body]} keyboardType="phone-pad" maxLength={14} returnKeyType="done" />
       </Field>
       <Field label={t('yourSkills')}>
         <View style={styles.chips}>
@@ -101,13 +111,14 @@ function WorkerSetup({ onDone }: { onDone: (p: WorkerProfile) => void }) {
   );
 }
 
-function Duty({ profile }: { profile: WorkerProfile }) {
+function Duty({ profile, onGone }: { profile: WorkerProfile; onGone: () => void }) {
   const { lang } = usePrefs();
   const { t } = useTranslation();
   const type = typeScale(lang);
   const [onDuty, setOnDuty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<'location' | 'backend' | null>(null);
+  const [problem, setProblem] = useState<'location-blocked' | 'location-off' | 'backend' | null>(null);
+  const [missedBeats, setMissedBeats] = useState(0);
   const onDutyRef = useRef(false);
 
   const beat = useCallback(
@@ -126,9 +137,13 @@ function Duty({ profile }: { profile: WorkerProfile }) {
       await beat(next);
       onDutyRef.current = next;
       setOnDuty(next);
+      setMissedBeats(0);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (e) {
-      setProblem(e instanceof LocationDenied ? 'location' : 'backend');
+      if (e instanceof WorkerGone) return onGone();
+      if (e instanceof LocationDenied) setProblem(e.canAskAgain ? 'location-off' : 'location-blocked');
+      else if (e instanceof LocationUnavailable) setProblem('location-off');
+      else setProblem('backend');
     } finally {
       setBusy(false);
     }
@@ -137,14 +152,27 @@ function Duty({ profile }: { profile: WorkerProfile }) {
   // Keep presence fresh while on duty; beat again at once when the app returns to the foreground.
   useEffect(() => {
     if (!onDuty) return;
-    const quietBeat = () => beat(true).catch(() => {});
+    const quietBeat = () =>
+      beat(true)
+        .then(() => setMissedBeats(0))
+        .catch((e) => (e instanceof WorkerGone ? onGone() : setMissedBeats((n) => n + 1)));
     const timer = setInterval(quietBeat, BEAT_MS);
     const sub = AppState.addEventListener('change', (s) => s === 'active' && onDutyRef.current && quietBeat());
     return () => {
       clearInterval(timer);
       sub.remove();
     };
-  }, [onDuty, beat]);
+  }, [onDuty, beat, onGone]);
+
+  // The heartbeat is a JS timer, and Android stops those when the screen sleeps. While on duty the
+  // screen stays on, the way a driver's app does, so the worker stays visible and hears new jobs.
+  useEffect(() => {
+    if (!onDuty) return;
+    activateKeepAwakeAsync('duty').catch(() => {});
+    return () => {
+      deactivateKeepAwake('duty').catch(() => {});
+    };
+  }, [onDuty]);
 
   return (
     <PaperScreen title={profile.name} subtitle={profile.phone} back={false}>
@@ -154,7 +182,11 @@ function Duty({ profile }: { profile: WorkerProfile }) {
         <Text style={[type.body, { color: onDuty ? colors.onLens : colors.onPaperMuted, textAlign: 'center' }]}>{t(onDuty ? 'onDutyHint' : 'offDutyHint')}</Text>
       </View>
 
-      {problem === 'location' && <Notice tone="warn" title={t('locationDeniedTitle')} body={t('locationDeniedBody')} />}
+      {onDuty && missedBeats >= 2 && <Notice tone="warn" title={t('beatFailing')} />}
+      {problem === 'location-off' && <Notice tone="warn" title={t('locationOffTitle')} body={t('locationOffBody')} />}
+      {problem === 'location-blocked' && (
+        <Notice tone="warn" title={t('locationDeniedTitle')} body={t('locationBlockedBody')} action={t('openSettings')} onAction={() => Linking.openSettings()} />
+      )}
       {problem === 'backend' && <Notice tone="warn" title={t('dutyError')} />}
 
       <PrimaryButton label={t(onDuty ? 'goOffDuty' : 'goOnDuty')} onPress={flip} disabled={busy} tone={onDuty ? 'ink' : 'green'} />

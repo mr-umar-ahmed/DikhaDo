@@ -14,6 +14,7 @@ export function ChangeRoleLink() {
       accessibilityRole="button"
       onPress={() => {
         setRole(null);
+        if (router.canDismiss()) router.dismissAll();
         router.replace('/');
       }}
       style={({ pressed }) => [{ minHeight: touch, justifyContent: 'center' }, pressed && { opacity: 0.6 }]}

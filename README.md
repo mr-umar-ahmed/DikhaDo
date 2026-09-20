@@ -40,7 +40,19 @@ After the first native build, day-to-day work only needs `npx expo start` with t
 
 ## Backend
 
-Create a free Supabase project, run `supabase/migrations/0001_init.sql` then `supabase/seed.sql` in the SQL editor, and copy `mobile/.env.example` to `mobile/.env` with the project URL and anon key. Set the demo centre coordinates at the top of the seed's worker block to the venue.
+Create a free Supabase project. In the SQL editor run, in order: `supabase/migrations/0001_init.sql`, `supabase/seed.sql` (once), then `0002_request_latlng.sql` and `0003_guards_presence_ranking.sql`. Copy `mobile/.env.example` to `mobile/.env` with the project URL and anon key.
+
+Move the 12 seeded demo workers to wherever you are demoing:
+
+```sql
+select move_demo_workers(17.4474, 78.3762);
+```
+
+Check the whole backend (matching, triggers, transition guards, realtime latency) with throwaway data:
+
+```bash
+cd mobile && node scripts/lifecycle-test.mjs
+```
 
 ## Privacy
 
