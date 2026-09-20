@@ -1,0 +1,14 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+# model binaries are pushed to the device, never committed (see docs/MODELS.md)
+*.task
+*.gguf
+*.bin
+node_modules/
+.next/
+.env*
