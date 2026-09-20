@@ -1,33 +1,49 @@
-# Theek
+# DikhaDo
 
-*Point it. Get it theek.*
+*Dikha do. Theek ho jayega.* — Just show it. It gets fixed.
 
-Offline-first, on-device-AI Android app for civic and repair reporting. One camera, one tap, two rails: a public grievance to a department, or a private job card to a local worker. Every inference runs on the phone; the app works in airplane mode.
+A rural-first worker marketplace for India. Show the broken thing to the camera; a small on-device model names the problem; the app lists trusted workers who are on duty nearby, with a price range, before you ever make a call. Works with AI switched off, on cheap phones, on weak signal. Civic reporting ("Report to panchayat") and before/after Proof of Work ride on the same camera as extras.
 
-See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for architecture, phases, risks and cut lines.
+See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for research, product, architecture, phases and risks.
 
-## Build
+## Layout
 
-Requirements: JDK 17, Android SDK platform 35. `JAVA_HOME` must point at JDK 17 (AGP refuses Java 11).
+| Path | What |
+|---|---|
+| `mobile/` | Expo (React Native, TypeScript) app |
+| `supabase/` | Postgres + PostGIS schema, matching function, seed data |
+| `console/` | Web console (Phase 4) |
+| `ml/` | Vision model training and export (Phase 3) |
+
+The original Kotlin scaffold is preserved on the `kotlin-scaffold` branch.
+
+## Run the app
+
+Requirements: Node 20+, JDK 17 (`JAVA_HOME` must point at it), Android SDK.
 
 ```bash
-./gradlew :app:assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.theek.app/.MainActivity
+cd mobile
+npm install
+npx expo prebuild -p android
+npx expo run:android
 ```
 
-Model binaries are never committed. From Phase 1 onward, `docs/MODELS.md` lists each file, its source, checksum and `adb push` path.
+After the first native build, day-to-day work only needs `npx expo start` with the installed dev build.
+
+## Backend
+
+Create a free Supabase project, run `supabase/migrations/0001_init.sql` then `supabase/seed.sql` in the SQL editor, and copy `mobile/.env.example` to `mobile/.env` with the project URL and anon key. Set the demo centre coordinates at the top of the seed's worker block to the venue.
 
 ## Privacy
 
-No image leaves the device until the user sends a ticket. The text ticket syncs first and alone; the photo follows later, compressed. No photo, audio or transcript is ever sent to a third-party AI service — there is none in the pipeline.
+Photos are classified on the phone. A photo leaves the device only as part of a job the user chooses to send, and only to the project's own storage — never to a third-party AI service. The open row-level-security policy in the migration is for the hackathon demo only and is marked as such.
 
 ## Status
 
 | Phase | State |
 |---|---|
-| 0 Scaffold: theme tokens, bundled type, navigation, placeholders | built |
-| 0.5 Device probe | next — needs the phone |
-| 1–6 | not started |
+| 0 Scaffold: tokens, bundled type, en/hi/te, role picker, schema + seed | built |
+| 1 Directory spine (no AI) | next |
+| 2–7 | not started |
 
-Fonts: IBM Plex Sans / Sans Devanagari / Mono and Noto Sans Telugu, all SIL OFL 1.1, bundled in `app/src/main/res/font`.
+Fonts: IBM Plex Sans / Sans Devanagari / Mono and Noto Sans Telugu, SIL OFL 1.1.

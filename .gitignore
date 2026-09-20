@@ -12,3 +12,6 @@ captures/
 node_modules/
 .next/
 .env*
+
+!.env.example
+build-android.log

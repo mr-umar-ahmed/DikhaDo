@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "DikhaDo",
+    "slug": "dikhado",
+    "scheme": "dikhado",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#0D0E0C",
+    "android": {
+      "package": "in.dikhado.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0D0E0C",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "experiments": {
+      "typedRoutes": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-localization",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0D0E0C",
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160
+        }
+      ]
+    ]
+  }
+}
