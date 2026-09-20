@@ -1,9 +1,11 @@
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { CategoryTile } from '@/components/CategoryTile';
-import { PaperScreen } from '@/components/paper';
+import { Notice, PaperScreen } from '@/components/paper';
+import { getJob, isOpen, lastJobId } from '@/lib/requests';
 import { childrenOf, topLevel } from '@/data/catalog';
 import { space } from '@/theme/tokens';
 
@@ -11,9 +13,27 @@ import { space } from '@/theme/tokens';
 export function CustomerHome() {
   const { t } = useTranslation();
   const router = useRouter();
+  const [activeJob, setActiveJob] = useState<string | null>(null);
+
+  // Coming back to the home screen must never lose a job in progress.
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      lastJobId()
+        .then((id) => (id ? getJob(id) : null))
+        .then((job) => alive && setActiveJob(job && isOpen(job.status) ? job.id : null))
+        .catch(() => {});
+      return () => {
+        alive = false;
+      };
+    }, []),
+  );
 
   return (
     <PaperScreen title={t('whatIsBroken')} subtitle={t('pickHint')} back={false}>
+      {activeJob && (
+        <Notice title={t('yourActiveJob')} action={t('openJob')} onAction={() => router.push({ pathname: '/job/[id]', params: { id: activeJob } })} />
+      )}
       <View style={styles.grid}>
         {topLevel.map((c) => (
           <CategoryTile

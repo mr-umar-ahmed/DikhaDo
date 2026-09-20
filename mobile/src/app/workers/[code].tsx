@@ -1,9 +1,9 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { Redirect, useLocalSearchParams } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Notice, PaperScreen } from '@/components/paper';
+import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
 import { byCode } from '@/data/catalog';
 import { nearbyWorkers, type NearbyWorker } from '@/lib/api';
 import { currentPoint, formatDistance, LocationDenied } from '@/lib/location';
@@ -61,13 +61,14 @@ export default function Workers() {
       {state.kind === 'ready' && state.workers.length === 0 && (
         <Notice title={t('noWorkersTitle')} body={t('noWorkersBody')} action={t('tryAgain')} onAction={load} />
       )}
-      {state.kind === 'ready' && state.workers.map((w) => <WorkerCard key={w.profile_id} worker={w} problem={problem} />)}
+      {state.kind === 'ready' && state.workers.map((w) => <WorkerCard key={w.profile_id} worker={w} problem={problem} code={code} />)}
     </PaperScreen>
   );
 }
 
-function WorkerCard({ worker: w, problem }: { worker: NearbyWorker; problem: string }) {
+function WorkerCard({ worker: w, problem, code }: { worker: NearbyWorker; problem: string; code: string }) {
   const { lang } = usePrefs();
+  const router = useRouter();
   const { t } = useTranslation();
   const type = typeScale(lang);
   const tierLabel = { new: t('tierNew'), trusted: t('tierTrusted'), star: t('tierStar') }[w.tier];
@@ -110,10 +111,14 @@ function WorkerCard({ worker: w, problem }: { worker: NearbyWorker; problem: str
         <Text style={[type.small, { color: w.tier === 'new' ? colors.onPaperMuted : colors.stampGreen }]}>{tierLabel}</Text>
       </View>
 
+      <PrimaryButton
+        label={t('request', { name: w.name.split(' ')[0] })}
+        onPress={() => router.push({ pathname: '/request', params: { worker: w.profile_id, name: w.name, code } })}
+      />
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" onPress={() => open(`tel:${w.phone}`)} style={({ pressed }) => [styles.action, styles.callAction, pressed && { opacity: 0.75 }]}>
-          <MaterialCommunityIcons name="phone" size={20} color={colors.lensInk} />
-          <Text style={[type.label, { color: colors.lensInk }]}>{t('call')}</Text>
+          <MaterialCommunityIcons name="phone" size={20} color={colors.onPaper} />
+          <Text style={[type.label, { color: colors.onPaper }]}>{t('call')}</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => open(`https://wa.me/${digits}?text=${message}`)} style={({ pressed }) => [styles.action, styles.waAction, pressed && { opacity: 0.75 }]}>
           <MaterialCommunityIcons name="whatsapp" size={20} color={colors.stampGreen} />
@@ -134,6 +139,6 @@ const styles = StyleSheet.create({
   fact: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   actions: { flexDirection: 'row', gap: space.sm },
   action: { flex: 1, minHeight: touch, borderRadius: radius.md, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.sm },
-  callAction: { backgroundColor: colors.worklightAmber },
+  callAction: { borderWidth: 2, borderColor: colors.onPaper },
   waAction: { borderWidth: 2, borderColor: colors.stampGreen },
 });

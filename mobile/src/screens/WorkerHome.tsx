@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
+import { WorkerInbox } from '@/components/WorkerInbox';
 import { topLevel } from '@/data/catalog';
 import { heartbeat, registerWorker, type WorkerProfile } from '@/lib/api';
 import { currentPoint, LocationDenied } from '@/lib/location';
@@ -47,6 +48,7 @@ function WorkerSetup({ onDone }: { onDone: (p: WorkerProfile) => void }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [skills, setSkills] = useState<string[]>([]);
+  const [upiId, setUpiId] = useState('');
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<'invalid' | 'backend' | null>(null);
 
@@ -58,7 +60,7 @@ function WorkerSetup({ onDone }: { onDone: (p: WorkerProfile) => void }) {
     setBusy(true);
     setProblem(null);
     try {
-      onDone(await registerWorker({ name: name.trim(), phone: `+91${digits}`, lang, skills }));
+      onDone(await registerWorker({ name: name.trim(), phone: `+91${digits}`, lang, skills, upiId: upiId.trim() }));
     } catch {
       setProblem('backend');
     } finally {
@@ -86,6 +88,9 @@ function WorkerSetup({ onDone }: { onDone: (p: WorkerProfile) => void }) {
             );
           })}
         </View>
+      </Field>
+      <Field label={t('yourUpi')}>
+        <TextInput value={upiId} onChangeText={setUpiId} style={[styles.input, type.body]} autoCapitalize="none" autoCorrect={false} placeholder="name@upi" placeholderTextColor={colors.onPaperMuted} />
       </Field>
 
       {problem === 'invalid' && <Notice tone="warn" title={t('fillAll')} />}
@@ -153,6 +158,8 @@ function Duty({ profile }: { profile: WorkerProfile }) {
       {problem === 'backend' && <Notice tone="warn" title={t('dutyError')} />}
 
       <PrimaryButton label={t(onDuty ? 'goOffDuty' : 'goOnDuty')} onPress={flip} disabled={busy} tone={onDuty ? 'ink' : 'green'} />
+      {/* Jobs already accepted must stay reachable even after going off duty. */}
+      <WorkerInbox workerId={profile.profileId} />
       <ChangeRoleLink />
     </PaperScreen>
   );

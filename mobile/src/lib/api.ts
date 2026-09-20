@@ -53,7 +53,7 @@ export async function nearbyWorkers(lat: number, lng: number, category: string, 
   }
 }
 
-export async function registerWorker(input: { name: string; phone: string; lang: Lang; skills: string[] }): Promise<WorkerProfile> {
+export async function registerWorker(input: { name: string; phone: string; lang: Lang; skills: string[]; upiId?: string }): Promise<WorkerProfile> {
   const db = client();
   const { data: profile, error: e1 } = await db
     .from('profiles')
@@ -64,7 +64,7 @@ export async function registerWorker(input: { name: string; phone: string; lang:
 
   const { error: e2 } = await db
     .from('workers')
-    .insert({ profile_id: profile.id, skills: input.skills, languages: [input.lang] });
+    .insert({ profile_id: profile.id, skills: input.skills, languages: [input.lang], upi_id: input.upiId || null });
   if (e2) throw new BackendError(e2.message);
 
   return { profileId: profile.id, name: input.name, phone: input.phone, skills: input.skills };
