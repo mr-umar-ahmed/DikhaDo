@@ -1,140 +1,164 @@
-# Theek — Implementation Plan
+# DikhaDo — Implementation Plan (v2, marketplace-first)
 
-Event: iQOO City Battles Hyderabad, 26–27 Sep 2026. 30-hour build. Plan written 20 Sep 2026.
+*Dikha do. Theek ho jayega.* — "Just show it. It'll get fixed."
 
-## 0. Ground rules carried from the master prompt
+Working name **DikhaDo** (see §1). Supersedes the v1 "Theek" civic-first plan. Written 20 Sep 2026 for iQOO City Battles Hyderabad, 26–27 Sep 2026 (30-hour build).
 
-- All inference on-device. App fully functional in airplane mode. Sync never blocks.
-- Gated phases: build → install → hand over physical check → report → commit → stop.
-- Services are routing-table rows, never screens. The LLM never picks routing.
-- No UI element ships until it works. Template fallback beats a crash.
+## 0. What changed
 
-## 1. Architecture (single `:app` module, package-by-layer — no multi-module overhead in 30 h)
+| | v1 Theek | v2 DikhaDo |
+|---|---|---|
+| Primary problem | civic grievance reporting | **finding a trusted nearby worker in rural / small-town India** |
+| Civic reporting, Proof of Fix, paper record | the product | **toppings** on the same camera |
+| Network | strictly airplane-mode | internet allowed, **low-bandwidth tolerant**, no paid APIs |
+| AI | vision + ASR + 2B LLM on device | **one tiny on-device vision model (~3 MB)**; app fully usable with AI off |
+| Stack | Kotlin + Compose | **Expo (React Native, TypeScript) + Supabase** |
+
+Dropping the on-device LLM and offline ASR removes the two biggest risks of v1 (Gemma speed, missing Telugu speech packs). The voice feature survives as a **recorded voice note** attached to the job — zero AI, zero literacy needed, works on any phone.
+
+## 1. Name
+
+Every obvious word is already a live app in this exact category — checked: **KaamSetu, Haazir, Kushal, KaamAdda, Mazdoor Sytu** are all on Play Store. So the name should come from what only we do: you don't type, you don't browse menus, you **show** the problem to the phone.
+
+- **DikhaDo** (दिखा दो, "just show it") — recommended. Names the gesture, works as a verb ("DikhaDo kar do"), keeps *theek* alive in the tagline.
+- Alternates: **Mestri** (మేస్త్రీ / मिस्त्री — the one word for "skilled tradesman" understood from UP to Tamil Nadu), **Dastak** (दस्तक, "a knock at your door").
+
+Not trademark-cleared — fine for a hackathon, re-check before any launch. Package id: `in.dikhado.app`.
+
+## 2. Competitor research → what we take, what we beat
+
+| App | What it does well (we include) | Gap we exploit |
+|---|---|---|
+| **KaamAdda** | category + location search; one-tap **call / WhatsApp**; "post work"; 9 Indian languages | static directory — no live availability, no price, no job lifecycle |
+| **Mazdoor Sytu** | **live map** of nearby workers with realtime markers + distance; phone-OTP verification; apply → shortlist → hire flow; in-app chat; push; "top rated"; **agriculture categories** (tractor, harvest labour) | job-board model (slow); Hindi/English only; Google Maps dependency |
+| **Deelo** | worker sees **job details + payout before accepting**; ID check → **trust badge**; one reputation across services; earnings wallet; WhatsApp comms | Kerala-urban, delivery-centric |
+| **Kaamate** | *not found on the web under any spelling — send me a link and I'll fold it in* | — |
+| Urban Company (reference) | fixed rate cards, job timeline | metro-only, smartphone-literate users |
+
+**Nobody does:** photo → diagnosis → matched worker. Nobody shows a **price range before the call**. Nobody handles a user who can't read a category tree. That is our wedge.
+
+## 3. Product
+
+### Roles (one app, chosen at first launch, switchable)
+**Customer** · **Worker** · **Sahayak** (CSC operator / village helper who registers workers and books on behalf of others — a mode, not a separate app).
+
+### Core loop (Tier 1 — the demo)
+1. **Show it.** Open app → camera. Snap the broken fan. On-device model → `Electrical › Fan › likely capacitor / winding`. *Or* tap the big icon grid (no-AI path, identical result).
+2. **Say it (optional).** Hold to record an 8-second voice note in any language. Attached to the job as audio.
+3. **See who's here.** Workers who are **on duty right now** within radius: photo, verified badge, rating, jobs done, languages, distance/ETA, **price range from the rate card** (₹150–₹300).
+4. **Request or just call.** "Request Ramesh" → he gets the job card (photo + diagnosis + voice note + distance + price range) → Accept / Decline. Or one-tap **Call** / **WhatsApp** — always available, because that is how Bharat actually books.
+5. **Track.** Requested → Accepted → On the way ("call before coming" honoured) → Working → Done.
+6. **Pay.** Cash, or **UPI intent** (`upi://pay?pa=…` opens PhonePe/GPay/Paytm — free, no gateway, no API).
+7. **Rate.** Stars + 3 tap-tags (on time / fair price / good work). Feeds the worker's tier.
+
+### Worker side
+Profile (skills, languages, village/pincode, rate card, UPI id) · **On duty / Off duty** toggle with location heartbeat · incoming job card with everything visible *before* accepting · today's jobs + earnings ledger · reputation tier (New → Trusted → Star) that raises match ranking.
+
+### No-AI / low-spec mode (first-class, not a fallback)
+Auto-enabled when `isLowRamDevice`, RAM < 3 GB, model load fails, or user toggles "Simple mode". Icon grid replaces the camera-first screen; list replaces the map; images load as thumbnails only. Every feature still works — AI only saves taps.
+
+### Service catalog — rows in a table, never screens
+Electrical (fan, wiring, switchboard, inverter) · Plumbing (tap, pipe, tank, motor line) · **Pump / tubewell / motor** · Appliance (geyser, cooler, fridge, mixer, TV) · Carpentry · Mason / painting · **2-wheeler / tractor mechanic** · **Garbage & bulk-waste pickup** · Farm labour / tractor hire · Cleaning / tank cleaning. Adding a service = one row in `categories` + rate card rows.
+
+### Toppings (everything v1 built toward, now as extras)
+- **Report to panchayat.** Same camera: if the model sees a garbage dump, open drain, pothole or dead streetlight on public land, the sheet offers "Report to panchayat" → the v1 paper grievance record with serial, SLA and department from the routing table → web console map.
+- **Proof of Fix → Proof of Work.** Before/after photo with ghost-overlay alignment; on-device re-classification gives `fixed / still broken / unclear`. Protects the customer from a bad job *and* the worker from a false complaint. Dispute evidence for the Sahayak.
+- **Paper job card.** The form-paper receipt with monospace serial — shareable as an image over WhatsApp. A worker's first-ever formal invoice.
+- **Offline queue.** A request composed with no signal is stored locally and sent when one bar returns (text first ~2 KB, photo later, compressed).
+- **Collective weight** for civic tickets (duplicates add signatures).
+
+### Vision slide only — do not build
+IVR, UPI 123PAY feature-phone flow, WhatsApp chatbot booking, worker insurance / tools / training, subscriptions & platform-fee billing, full KYC with DigiLocker. Revenue model (₹10–30/job or ₹99–299/month) lives in the pitch.
+
+## 4. Tech stack — chosen for build speed, ₹0 cost, no paid APIs
+
+| Layer | Choice | Why |
+|---|---|---|
+| App | **Expo SDK (React Native) + TypeScript, expo-router**, dev-client build | Node is already on this machine, Flutter is not (1 GB+ SDK install); one language across app, console and backend types; fastest iteration (hot reload over USB/Wi-Fi) |
+| UI | StyleSheet + design tokens, Reanimated 3, expo-haptics, bundled IBM Plex / Noto fonts | carries over the v1 design system exactly |
+| Camera + AI | **react-native-vision-camera + react-native-fast-tflite**, MobileNetV3-Small INT8 (~3 MB), GPU/NNAPI delegate | genuinely on-device, <100 ms, no API |
+| Backend | **Supabase free tier**: Postgres + **PostGIS** (nearest-worker query), **Realtime** (presence, job status), Storage (photos, voice notes), RLS | one service, no servers to write |
+| Maps | **MapLibre + OpenStreetMap tiles** | no Google Maps key, no billing |
+| Local data | expo-sqlite (offline queue, cached workers, rate cards) | works on one bar |
+| Voice note | expo-audio (AAC 16 kbps ≈ 16 KB for 8 s) | no ASR needed |
+| Phone integration | `tel:`, `https://wa.me/…`, `upi://pay`, share-sheet, expo-location, expo-notifications | the "creative phone use" 15% |
+| i18n | i18next — **English, Hindi, Telugu** at launch, language picked on first screen with audio label | local-language-first |
+| Console | Next.js + Tailwind + MapLibre + Supabase realtime | verification queue, live job map, civic tickets |
+
+Honest trade-off: Flutter produces a slightly lighter app on ₹6k phones. Mitigation: Hermes, arm64 + armv7 only, no heavy UI kit, thumbnails, target APK ≤ 35 MB, tested on the lowest-spec phone we can find.
+
+Auth caveat: real SMS OTP costs money on every provider. Hackathon build uses Supabase anonymous auth + phone number captured on profile, with a working OTP screen wired to Supabase test numbers. Flagged, not hidden.
+
+## 5. Data model (Supabase)
 
 ```
-com.theek.app
-├─ ui/theme        Color, Type, Theme (two material worlds: Lens / Record)
-├─ ui/lens         CameraX viewfinder, shutter, offline badge, diagnosis sheet
-├─ ui/record       Paper ticket, mic + waveform, send
-├─ ui/queue        Pending / sent list
-├─ ui/verify       Proof of Fix: ghost overlay re-capture, verdict
-├─ nav             Routes, NavHost (start destination = lens)
-├─ core/routing    RoutingTable.kt  ← the ONLY region-specific file (+ strings)
-├─ core/vision     DefectClassifier (LiteRT), EmbeddingExtractor, StubMapper
-├─ core/speech     Transcriber interface → SpeechRecognizerImpl | WhisperImpl
-├─ core/llm        Drafter interface → MediaPipeDrafter | LlamaCppDrafter | TemplateDrafter
-├─ core/ticket     Ticket model, TicketAssembler (deterministic fields first), JsonRepair
-├─ data            Room (TicketEntity, AccountabilityEntity), TicketRepository
-├─ sync            TextSyncWorker (first, alone), PhotoSyncWorker (lazy), SupabaseApi
-└─ ModelWarmup     splash-gated pre-warm, sessions held for process lifetime
-console/           Next.js + Tailwind + MapLibre, Supabase realtime
-ml/                training notebook/script, dataset manifest, export to INT8 .tflite
-docs/              MODELS.md (where to get model files + checksums), SECOND_COUNTRY.md
+profiles(id, role, name, phone, lang, village, pincode, geog, photo_url)
+workers(profile_id, skills[], languages[], on_duty, last_seen, geog, upi_id,
+        verified, verified_by, rating_avg, rating_count, jobs_done, tier, call_before_coming)
+categories(id, parent_id, code, icon, name_en, name_hi, name_te, vision_class, rail)   -- the catalog
+rate_cards(category_id, region, min_inr, max_inr)
+requests(id, serial, customer_id, worker_id, category_id, diagnosis, vision_conf,
+         photo_url, voice_url, geog, status, price_agreed, pay_method, created_at, …)
+request_events(request_id, status, at)            -- timeline + audit
+ratings(request_id, stars, tags[], by)
+verifications(worker_id, id_photo_url, status, reviewed_by)   -- console / Sahayak approves
+civic_tickets(…v1 ticket schema…)                  -- topping
 ```
+`nearby_workers(lat, lng, category, lang, radius_km)` — SQL function: `on_duty AND last_seen > now()-2min AND skills @> category`, ranked by distance, tier, rating, language match. Status machine: `draft → queued → requested → accepted → on_the_way → working → done → paid → rated` (+ `declined`, `cancelled`, `disputed`).
 
-Key seams (interfaces so fallbacks are a one-line swap, decided by device probe, not by hope):
-`DefectClassifier`, `Transcriber`, `Drafter`. Each has a guaranteed-to-work last-resort impl
-(stub mapper / typed text entry hidden unless ASR fails / template drafter).
+## 6. Design
 
-### Data flow
-```
-shutter → Bitmap(224²) → DefectClassifier → (class, conf)
-        → RoutingTable.resolve(class, boundary) → rail, route_to, sla, default severity, flags
-        → hold mic → Transcriber → text(lang)
-        → TicketAssembler: deterministic fields filled → Drafter(prompt w/ fixed fields) → JSON
-        → JsonRepair.parse || TemplateDrafter → clamp severity to default±1
-        → Room (PENDING) → TextSyncWorker (≈4 KB JSON) → PhotoSyncWorker (JPEG q60, ≤1280px, later)
-```
+The two material worlds stay. **The lens** (dark camera, one shutter) → **the paper** (job card / receipt / grievance). The shutter-to-paper tuck remains the one orchestrated motion. Rail colours flip priority: **worklight amber is now the brand colour** (worker marketplace), stamp indigo is the civic topping, stamp green = verified / on duty, register red = disputes and SLA breach. Big icons, 48 dp+ touch targets, every category label has a speaker button that reads it aloud (device TTS, free). Copy rules unchanged: "Request Ramesh" → "Requested"; never "Submit".
 
-## 2. Phase plan
+## 7. Phases (30 h)
 
-| Phase | Hours (budget) | Deliverable | Gate | In-phase cut line |
-|---|---|---|---|---|
-| 0 Scaffold | 0–1.5 | Compose app, tokens, type, nav, placeholders, git | builds + installs, theme visible | — |
-| 0.5 Device probe | 1.5–3 | Probe screen (debug build only): Gemma 2B via MediaPipe tok/s, offline SpeechRecognizer hi-IN/te-IN availability, LiteRT NNAPI/GPU delegate | decision recorded in `docs/DEVICE_DECISIONS.md` | if Gemma < 8 tok/s → Llama 3.2 1B; if no offline te/hi pack → whisper.cpp tiny |
-| 1 Spine | 3–8 | Lens launch, shutter, classifier, routing table, diagnosis sheet, freeze-and-tuck motion | airplane mode, <1 s, 10×, 0 crashes | stock MobileNet + class-mapping stub; motion simplified to crossfade under reduced-motion |
-| 2 Voice→grievance | 8–15 | hold-mic + waveform, ASR, drafter, JSON repair, paper record | 6 s speech → ticket <12 s offline, 5 runs w/ variance | one language only (Telugu or Hindi); `body_local` = raw transcript if LLM weak in that script |
-| 3 Queue/sync/console | 15–21 | Room WAL queue, WorkManager, text-first sync, console map + SLA clock | network on → console row <5 s | console: table + map only, no auth, no filters |
-| 4 Proof of Fix | 21–25 | geofence prompt, ghost overlay, classifier + embedding distance, 3-state verdict, accountability log | remove trash → verified; leave → stays open | geofence → manual "Verify" on ticket; keep 3-state verdict |
-| 5 Collective weight | 25–26.5 | geohash-7 bucket + embedding cosine → merge, signature count | — | skip entirely if Phase 4 slips |
-| 6 Hardening | 26.5–30 | pre-warm, seed 3 tickets, 5 cold runs, kill dead UI, loaner check | 5 clean cold-start runs | never cut |
-
-Hardening is reserved time. Phase 5 is the first thing dropped, then the geofence, then the private job-card polish.
-
-## 3. Phase detail
-
-### Phase 0 — Scaffold
-Kotlin 2.0 + Compose BOM, minSdk 26, compile/target 35. `TheekColors` with all seven tokens; `LensTheme` (dark) and `RecordTheme` (paper) as two composition-local worlds under one `TheekTheme`. Bundled fonts (no downloadable fonts — they need network): IBM Plex Sans, Plex Sans Devanagari, Noto Sans Telugu, Plex Mono (serials/coords only). NavHost start = lens.
-
-### Phase 0.5 — Device probe (the "first three hours" decision)
-Debug-only screen, never in release nav. Measures: LLM load time + decode tok/s, ASR offline availability per locale (`RecognizerIntent.EXTRA_PREFER_OFFLINE`, `SpeechRecognizer.createOnDeviceSpeechRecognizer` on API 31+, `checkRecognitionSupport` on 33+), classifier latency per delegate. Output is a written decision, not a vibe.
-
-### Phase 1 — Spine
-- CameraX `Preview` + `ImageCapture` (min-latency mode); classify from the preview-resolution bitmap, keep full-res JPEG on disk for later lazy upload.
-- `RoutingTable`: `enum DefectClass(SW, SEW, HW, POT, LIGHT, WATER, WIRE, APPL)` → `Route(rail, routeTo, slaHours, defaultSeverity, autoFlag)`. Boundary rule: default rail from class; one "Arrange a worker instead" / "Report to department instead" toggle on the diagnosis sheet flips `SW`/`WATER` to their private rows. Classes with no alternate rail show no toggle.
-- Stub path: stock MobileNetV3 ImageNet → hand map (e.g. `ashcan`, `plastic bag` → SW; `electric fan` → APPL; `street sign/pole` → LIGHT; `switch` → WIRE). Same interface as the fine-tuned model, so the swap is a file drop.
-- Low confidence (<0.45): sheet offers the top-2 classes as a user pick. Never silently guess.
-- Motion: frozen frame as shared element shrinking into the paper header while the sheet rises. One `Animatable` choreography; reduced-motion (`Settings.Global.ANIMATOR_DURATION_SCALE == 0`) → cut.
-
-### Phase 2 — Voice to grievance
-- Hold-to-record; waveform from `onRmsChanged` (SpeechRecognizer) or AudioRecord RMS (whisper path).
-- Prompt gives the LLM the fixed fields as facts and asks for only `title, body_en, body_local, severity, public_health_flag`. Smaller output = faster + fewer parse failures. Max ~180 output tokens to fit the 12 s budget.
-- `JsonRepair`: strip fences → first `{` to last `}` → close unbalanced quotes/braces → lenient parse → per-field validation → per-field template fill. Severity clamped to default ±1, 1..5.
-- Serial: `THK-<year>-<6-digit Room autoincrement>`, Plex Mono.
-- Record screen: ruled header block, thumbnail tucked in header, classification stamp rotated −6°, rail colour on stamp and primary button. Button: "Send to department" / "Send to electrician" → state "Sent" / "Queued — sends when signal returns".
-
-### Phase 3 — Queue, sync, console
-- Room is the source of truth; UI observes Flow. States: `DRAFT → PENDING → TEXT_SENT → PHOTO_SENT`, plus `RESOLVED_CLAIMED`, `VERIFIED`, `REOPENED`.
-- `TextSyncWorker`: unique work, `NetworkType.CONNECTED`, expedited, exponential backoff; upsert by serial (idempotent). Also kicked directly by a `ConnectivityManager.NetworkCallback` so the 5-second gate doesn't wait on WorkManager batching.
-- `PhotoSyncWorker`: chained after text, `UNMETERED`-preferred, JPEG ≤1280 px q60 → Supabase Storage. Log byte counts for both so the "4 KB vs 3 MB" claim is on-screen evidence.
-- Supabase: `tickets` table (schema = ticket JSON + status + weight), `accountability_log`, RLS: anon insert/select only for the hackathon. Keys in `local.properties`, never committed.
-- Console: Next.js app router, MapLibre with a free raster style, Supabase realtime subscription, SLA countdown per row, register-red on breach, "Mark resolved" button (needed for the Phase 4 false-closure beat).
-
-### Phase 4 — Proof of Fix
-- Geofence (150 m) via `GeofencingClient` needs Play services + background location → high risk; fallback is a "Verify fix" action on the ticket plus a distance check when the app opens.
-- Ghost overlay: original frame at 35% alpha over the live preview.
-- Verdict = f(classifier on after-frame, cosine distance between penultimate-layer embeddings of before/after):
-  - defect class gone (p < 0.25) AND scene similar enough to be the same place (background embedding sim > τ_scene) → `verified fixed`
-  - same class present (p > 0.6) → `still present`
-  - otherwise (different place, dark, blur) → `inconclusive`, ask for a re-scan
-- Console-marked "resolved" + verdict `still present` → `REOPENED` + row in the accountability record (visible in app and console).
-- Thresholds tuned on the real planted-trash scene at the venue; stored in one constants file.
-
-### Phase 5 — Collective weight
-geohash-7 (~150 m) + same class + embedding cosine > 0.8 → merge locally before upload; bump `signatures`, `weight = signatures × severity`. Console sorts by weight. Theek Score only if hours remain.
-
-### Phase 6 — Hardening
-Splash holds until classifier + LLM + ASR are warm; sessions live in an `Application`-scoped holder. Seed three historical tickets (console + device). Scripted demo ×5 cold-start in airplane mode. Grep for `TODO|placeholder|Toast|Log.d` in UI. Loaner-device run.
-
-## 4. Orchestration — three parallel tracks
-
-| Track | Owner | When | Blocks |
+| # | Hours | Deliverable | Gate (you verify on the phone) |
 |---|---|---|---|
-| A. Android app | Claude (main session) | continuous, phases in order | — |
-| B. Vision model: shoot dataset (≥150 img/class, real streets), fine-tune MobileNetV3-Small, INT8 export | **You** shoot; Claude writes `ml/train.py` + export + eval during Phase 1 | before the event if possible | Phase 1 gate quality (not plumbing — stub covers that) |
-| C. Console + Supabase | Claude sub-agent in parallel with Phase 2, integrated in Phase 3 | from hour ~8 | needs your Supabase project URL + anon key |
+| 0 | 0–2 | Expo app, tokens, fonts, i18n (en/hi/te), role picker, Supabase schema + seed (categories, rate cards, 12 demo workers around the venue) | installs via `adb`, language switch works |
+| 1 | 2–7 | **Directory spine, no AI:** icon-grid problem picker → `nearby_workers` list with badge/rating/distance/price → Call / WhatsApp. Worker profile + **on-duty toggle + presence** | phone A goes on duty → appears on phone B's list within 3 s; call opens dialer |
+| 2 | 7–12 | **Job lifecycle:** request → realtime job card on worker phone → accept/decline → timeline → done → UPI intent / cash → rating updates worker stats | full loop across two phones in < 60 s |
+| 3 | 12–17 | **Show it:** vision-camera + TFLite classify → prefilled category + likely fault; low-confidence → top-2 pick; voice note; Simple mode auto-switch; shutter-to-paper motion | 10 snaps of a fan/switchboard/tap, correct category, < 1 s, network off |
+| 4 | 17–21 | **Trust:** verification upload → console approve → green badge; tiers; rate-card ranges; call-before-coming; paper job card shareable to WhatsApp | unverified worker becomes verified live from the laptop |
+| 5 | 21–24 | **One-bar resilience:** SQLite request queue, text-first sync, cached last-seen workers, thumbnails; Sahayak assisted-booking mode | compose a request in airplane mode → toggling network on delivers it |
+| 6 | 24–27 | **Toppings, in this order, stop when time is up:** Proof of Work before/after → Report to panchayat + console map → live map view → collective weight | each ships only if fully working |
+| 7 | 27–30 | Hardening: model pre-warm behind splash, seed data, 5 cold-start demo runs, kill dead UI, low-spec phone run | 5 clean runs |
 
-Sub-agent use: console scaffold, `ml/` training script, and `JsonRepair` unit tests are independent of the main Android thread and run as background agents; everything touching the device stays in the main session. Each phase ends with report → commit (`Phase N: …`) → stop for your go-ahead.
+Cut order if behind: Phase 6 items from the bottom up → Sahayak mode → map view. Phases 0–3 alone beat a directory app.
 
-## 5. What I need from you (in order of urgency)
+## 8. Vision model
 
-1. **A phone on USB with debugging enabled** — nothing can pass a gate without it. Tell me its model/RAM.
-2. `THEEK_PROJECT_CONTEXT.md` in the repo root (it is missing).
-3. Gemma 2 2B IT LiteRT/MediaPipe `.task` file (Kaggle/HF, licence click-through — you must accept it yourself). Pushed to the device via `adb push`, not bundled in the APK (~1.5 GB+).
-4. Dataset status for the 8 classes; demo language choice: **Telugu or Hindi** (pick one for Tier 1).
-5. Supabase project URL + anon key (you create the account/project; I write the schema SQL).
+Eight classes keep accuracy honest: `FAN_APPLIANCE, WIRING_SWITCH, TAP_PIPE_LEAK, PUMP_MOTOR, WOOD_FURNITURE_DOOR, VEHICLE, GARBAGE, CIVIC_ROAD_DRAIN_LIGHT`. Sub-problem ("not spinning / noise / sparking") is a 3-icon tap, not a model output. Day-one stub: **stock ImageNet MobileNetV3** with a label map — ImageNet already knows *electric fan, switch, washer, refrigerator, microwave, motor scooter, tractor, ashcan, faucet*, so the stub is genuinely useful for this domain, and the fine-tuned model is a drop-in file swap. `ml/train.py` + INT8 export + self-shot dataset manifest in the repo.
 
-## 6. Risk register
+## 9. Orchestration
 
-| # | Risk | Likelihood | Mitigation |
-|---|---|---|---|
-| 1 | **Offline Telugu/Hindi ASR absent on the iQOO loaner** (Funtouch OS often ships without Google offline packs; packs cannot be downloaded in airplane mode) | High | Probe in Phase 0.5; pre-download packs on Wi-Fi; whisper.cpp tiny/base fallback; Hindi as backup language |
-| 2 | Gemma 2B too slow / OOM on loaner | Medium | tok/s probe; Llama 3.2 1B; output capped to 5 short fields; template fallback always present |
-| 3 | Gemma weak at Telugu script generation | Medium | `body_local` falls back to cleaned transcript; `body_en` remains the formal document |
-| 4 | Fine-tuned classifier under-trained | Medium | 8 classes only, heavy augmentation, top-2 user pick under low confidence |
-| 5 | Geofencing unreliable indoors at venue | High | manual "Verify fix" path is primary for the demo |
-| 6 | Venue Wi-Fi blocks Supabase realtime | Low-Med | phone hotspot; console polls every 2 s as fallback to websocket |
-| 7 | Loaner differs from dev phone (ABI, Android version, permissions UI) | Medium | arm64-only native libs, runtime permission flow tested from clean install, Phase 6 loaner run |
+| Track | Who | When |
+|---|---|---|
+| A. Mobile app | Claude, main session, phases in order | continuous |
+| B. Supabase schema, SQL functions, RLS, seed | Claude sub-agent, parallel with Phase 0–1 | needs your project URL + anon key |
+| C. Web console | Claude sub-agent, parallel with Phase 2–3, integrated Phase 4 | — |
+| D. Dataset photos (≥100/class, real homes & streets) + two test phones | **You** | before the event |
 
-## 7. Judge-readiness kept true throughout
-`docs/MODELS.md` (exact files, sources, checksums, `adb push` paths) → reproducibility. `ml/DATASET.md` (self-shot, locations, counts) → grounding. Privacy statement in-app and README: images stay on device until the user sends; text-first sync. `docs/SECOND_COUNTRY.md`: swap `RoutingTable` rows + strings + ASR locale → Nairobi. Three-state verdict → rigor.
+Each phase: plan in 3 sentences → build → install via `adb` → hand you the physical check → report → commit → **stop**.
+
+## 10. Risks
+
+| Risk | L | Mitigation |
+|---|---|---|
+| vision-camera + fast-tflite native build friction on Windows | Med | prove it in Phase 0 with a throwaway screen *before* building on it; fallback = expo-camera still photo → tflite |
+| Venue Wi-Fi blocks websockets (realtime) | Med | 3 s polling fallback; phone hotspot |
+| Two-phone demo needs two devices | High | second phone or emulator as the worker; console can also act as a worker |
+| Free-tier Supabase pause / limits | Low | project created this week, keep-alive ping |
+| Scope creep from toppings | High | Phase 6 is ordered and cuttable; nothing enters UI unfinished |
+| RN performance on low-end phone | Med | Simple mode, FlashList, thumbnails, Hermes |
+
+## 11. Judging map
+
+End product 30% → Phases 1–2 polished, two-phone live loop · Novelty/impact 20% → photo-to-worker, price transparency, literacy-free, SDG 8 (decent work) + 10 + 11 + 6 · Creative phone use 15% → camera, on-device NN, mic, GPS presence, dialer, WhatsApp, UPI intent, TTS, haptics · Technical depth 15% → quantised on-device model, PostGIS matching, realtime presence, offline queue · Office Kit 10% / Demo 10% → console + scripted 90 s.
+
+**Demo:** snap a dead fan → "Fan, likely capacitor, ₹150–300" → three on-duty electricians appear → request → second phone rings with the job card → accept → done → UPI opens → rate → paper job card shared to WhatsApp. Then point at the trash pile: same camera, "Report to panchayat". Closing line: **Dikha do. Theek ho jayega.**
+
+## 12. Needed from you
+1. Go-ahead on **name** and **stack switch** (the Kotlin scaffold is kept on a `kotlin-scaffold` branch, not deleted; tokens and fonts carry over).
+2. Supabase project URL + anon key (free tier; you create the account).
+3. Two Android phones on USB if possible (one can be low-spec — that's a feature).
+4. A link for "Kaamate".
