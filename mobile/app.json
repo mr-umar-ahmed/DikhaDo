@@ -15,7 +15,12 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
+      ]
     },
     "experiments": {
       "typedRoutes": true
@@ -30,6 +35,12 @@
           "backgroundColor": "#0D0E0C",
           "image": "./assets/splash-icon.png",
           "imageWidth": 160
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "DikhaDo uses your location to find workers near you."
         }
       ]
     ]
