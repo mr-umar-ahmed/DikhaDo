@@ -28,6 +28,14 @@ npx expo prebuild -p android
 npx expo run:android
 ```
 
+**Windows path limit:** the native C++ build fails with "Filename longer than 260 characters" when the repo sits in a deep folder (it does, under OneDrive). Build from a short drive letter instead — no admin rights needed, mapping lasts until reboot:
+
+```bash
+subst T: "C:\Users\DELL\OneDrive\Desktop\PROJECTS\THEEK"
+```
+
+then run the commands above from `T:\mobile`. Moving the repo to something like `C:\dev\dikhado` (outside OneDrive, which also stops it syncing `node_modules`) fixes this permanently.
+
 After the first native build, day-to-day work only needs `npx expo start` with the installed dev build.
 
 ## Backend
