@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
+import { SafetyCard } from '@/components/SafetyCard';
 import { byCode } from '@/data/catalog';
 import { BackendError, cachedWorkers, nearbyWorkers, type NearbyWorker } from '@/lib/api';
 import { currentPoint, formatDistance, LocationDenied } from '@/lib/location';
@@ -50,6 +51,8 @@ export default function Workers() {
 
   return (
     <PaperScreen title={t('workersNearYou')} subtitle={`${problem}\n${t('usualPrice')} ₹${category.price[0]}–${category.price[1]}`}>
+      {/* The same advice whether the phone recognised the problem or the user tapped a picture. */}
+      <SafetyCard code={code} />
       {state.kind === 'loading' && (
         <View style={styles.loading}>
           <ActivityIndicator color={colors.worklightAmber} size="large" />

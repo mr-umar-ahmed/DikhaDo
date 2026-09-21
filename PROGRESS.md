@@ -29,6 +29,9 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 
 ## Phase 3 — Local AI I: *See* (in progress)
 
+**2026-09-21 · Diagnosis sheet + safety card (UI)** · _this commit_
+`DiagnosisSheet` — the paper record of what the phone saw: photo in the header, "Checked on this phone. No internet used.", inference time in mono, amber class stamp with confidence, price range, then the way forward for each of the four outcomes (sure → Find workers · unsure → pick one of two · unknown → picture grid · bad photo → retake or overrule). `SafetyCard` — red-ruled advice for electrical / pump / geyser problems, read aloud once on the sheet, also shown above the workers list so the grid path gets it too. 24 new strings in en/hi/te. Not yet reachable in the app: waits for the camera screen.
+
 **2026-09-21 · AI core: label map, quality gate, safety table, diagnosis** · _this commit_
 The model-independent half of the local AI layer, in `mobile/src/ai/`, all pure functions:
 - `labelMap.ts` — ~90 ImageNet labels mapped onto catalog categories and sub-problems by word-boundary keyword; related labels add up (washer 0.30 + dishwasher 0.25 = appliance 0.55); anything else is ignored rather than forced.
