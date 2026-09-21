@@ -94,6 +94,7 @@ export async function createJob(input: { clientId: string; customerId: string; w
   if (!job) throw new BackendError(error?.message ?? 'request insert failed');
 
   await AsyncStorage.setItem(LAST_JOB_KEY, job.id).catch(() => {});
+  bookings++;
   return job;
 }
 
@@ -130,6 +131,10 @@ export async function workerUpi(workerId: string): Promise<string | null> {
   return (data?.upi_id as string | null) ?? null;
 }
 
+let bookings = 0;
+/** How many jobs this session has booked. Lets the camera screen start fresh after one. */
+export const bookingCount = () => bookings;
+
 export const isOpen = (s: Status) => !['rated', 'declined', 'cancelled', 'disputed'].includes(s);
 
 /**
@@ -141,7 +146,10 @@ export async function openJobId(): Promise<string | null> {
   if (!id) return null;
   try {
     const job = await getJob(id);
-    return job && isOpen(job.status) ? job.id : null;
+    if (job && isOpen(job.status)) return job.id;
+    // Finished or gone: forget it, so an offline check later cannot resurrect it.
+    await AsyncStorage.removeItem(LAST_JOB_KEY).catch(() => {});
+    return null;
   } catch {
     return id;
   }

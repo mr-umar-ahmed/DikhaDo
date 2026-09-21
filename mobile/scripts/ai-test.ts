@@ -5,6 +5,7 @@ import { hitForLabel, scoreCategories } from '../src/ai/labelMap';
 import { assessQuality } from '../src/ai/quality';
 import { safetyFor } from '../src/ai/safety';
 import { byCode } from '../src/data/catalog';
+import shipped from '../assets/models/imagenet_labels.json';
 
 let failures = 0;
 const check = (name: string, ok: boolean, detail = '') => {
@@ -25,6 +26,19 @@ const own = hitForLabel('dikhado:electrical/switchboard');
 check('fine-tuned labels route directly', own?.category === 'electrical' && own?.problem === 'switchboard');
 check('fine-tuned label without a problem', hitForLabel('dikhado:carpentry')?.category === 'carpentry' && hitForLabel('dikhado:carpentry')?.problem === undefined);
 check('the fine-tuned "other" class maps to nothing', hitForLabel('dikhado:other') === null);
+
+// The labels that actually ship are the SHORT form ("bucket", not "bucket, pail"). Test against the real file.
+const routes = (label: string) => {
+  if (!(shipped as string[]).includes(label)) return `<"${label}" is not in the shipped label file>`;
+  const h = hitForLabel(label);
+  return h ? `${h.category}${h.problem ? '/' + h.problem : ''}` : '<none>';
+};
+for (const [label, want] of [
+  ['electric fan', 'appliance/fan_dead'], ['switch', 'electrical/switchboard'], ['washbasin', 'plumbing/tap_leak'],
+  ['tub', 'plumbing/tap_leak'], ['bucket', 'plumbing/tap_leak'], ['barrel', 'plumbing/tank_overflow'],
+  ['file', 'carpentry'], ['cab', 'mechanic'], ['ashcan', 'waste/bulk_waste'], ['tractor', 'mechanic'],
+  ['carton', '<none>'], ['packet', '<none>'], ['hand blower', 'appliance'],
+] as const) check(`shipped label "${label}" -> ${want}`, routes(label) === want, routes(label));
 
 const everyHit = ['electric fan', 'refrigerator', 'switch', 'washbasin', 'water tower', 'tractor', 'wardrobe', 'ashcan', 'broom', 'paintbrush']
   .map((l) => hitForLabel(l))
@@ -60,6 +74,8 @@ const run = async () => {
   check('0.25 electrical vs 0.20 appliance -> offers two guesses', unsure.kind === 'unsure' && unsure.guesses.length === 2 && unsure.guesses[0].category === 'electrical');
   const unknown = await diagnose(checker, S, fake([0, 0.02, 0.02, 0.9, 0.02]));
   check('a confident dog -> unknown, never a forced category', unknown.kind === 'unknown');
+  const dogFirst = await diagnose(checker, S, fake([0, 0.3, 0.16, 0.5, 0]));
+  check('appliance 0.46 but a dog at 0.50 -> not sure, only a guess', dogFirst.kind === 'unsure');
   const bad = await diagnose(night, S, fake([0, 1, 0, 0, 0]));
   check('a dark photo is stopped before the model runs', bad.kind === 'bad-photo');
   const forced = await diagnose(night, S, fake([0, 1, 0, 0, 0]), { skipQualityGate: true });

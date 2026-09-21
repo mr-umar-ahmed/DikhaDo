@@ -1,4 +1,4 @@
-import { scoreCategories, type CategoryScore } from './labelMap';
+import { scoreCategories, strongestNonJob, type CategoryScore } from './labelMap';
 import { assessQuality, type Quality } from './quality';
 
 /** Below this the phone does not claim to know; it offers its two best guesses instead. */
@@ -29,6 +29,8 @@ export async function diagnose(rgb: Uint8Array, size: number, classify: Classify
 
   const scores = scoreCategories(labels, probabilities).filter((s) => s.confidence >= GUESS_ABOVE);
   if (scores.length === 0) return { kind: 'unknown', quality, ms };
-  if (scores[0].confidence >= SURE_ABOVE) return { kind: 'sure', best: scores[0], others: scores.slice(1, 3), quality, ms };
+  // If the phone's single strongest answer was "not a job", it has no business being sure about a job.
+  const doubted = strongestNonJob(labels, probabilities) > scores[0].confidence;
+  if (scores[0].confidence >= SURE_ABOVE && !doubted) return { kind: 'sure', best: scores[0], others: scores.slice(1, 3), quality, ms };
   return { kind: 'unsure', guesses: scores.slice(0, 2), quality, ms };
 }

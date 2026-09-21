@@ -28,6 +28,20 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 
 ## Phase 3 — Local AI I: *See* ✅ (fine-tuned model awaits the dataset)
 
+**2026-09-21 · Phase 3 review fixes** · _this commit_
+24-agent review of the Phase 3 code (4 finders, one deliberately adversarial skeptic per finding): **17 confirmed, 3 refuted, none demo-breaking**. Full report: `docs/review-phase3.json`. Fixed:
+- **Why the tap was missed:** five label-map keywords were written in ImageNet's long form (`'bucket, pail'`, `'tub, vat'`, `'barrel, cask'`…) but the shipped label file is the short form, so bucket / tub / barrel / file / cab could never match - and a bucket under a tap is the rural plumbing scene. Fixed, bucket moved to plumbing, and the unit tests now assert against the **real shipped label file** (38 checks).
+- Boxes and snack packets no longer stamp "Bulk waste pickup" (`carton`, `crate`, `packet` removed); `hand blower` no longer reads as a dead fan.
+- The phone is never "sure" about a job when its single strongest answer was *not a job* (a face, a dog, the fine-tuned `other`).
+- Android BACK on the diagnosis sheet returns to the camera instead of closing the app (and stops the spoken safety advice).
+- The camera-first home now shows **Your active job** (on the viewfinder and on the sheet) and the change-role link; a finished job is forgotten so it cannot reappear offline; after a booking the lens starts fresh instead of showing the old sheet.
+- "None of these" is a one-off detour to the grid; only "Choose the problem yourself" is remembered as Simple mode. That label replaces "Choose from pictures", which read as "photo gallery" under a shutter. One candidate reads "Not this".
+- Stamp is ink-on-paper inside an amber rule (amber text was 2.5:1 contrast); it names the *category* the percentage refers to, with the sub-problem on its own line.
+- Demo bot resumes a job from whatever status it is in (after a failed step or a restart) instead of abandoning it.
+- Trainer: validation is the **last 20% of each class by capture time** - a random split put near-identical shots of one object on both sides and inflated every number; photos are centre-cropped like the app does, not stretched.
+- Dataset mode: "Remove the last photo". Pull script: the phone is the source of truth (deletions stick), clear messages for two devices / release build, Git Bash path mangling disabled.
+Refuted by the skeptics: "model load failure is terminal", "shutter live before the camera session starts".
+
 **2026-09-21 · Dataset mode in the app + training pipeline verified** · _this commit_
 - **Dataset mode** (`src/app/dataset.tsx`, debug builds only, reachable from the first screen): class chips with live counts, one tap = one upright 640 px training photo saved to `<app documents>/dataset/<class>/`, counter towards 150 on the shutter itself. Tested on the Redmi: photos saved, ~25-40 KB each (≈ 50 MB for a full set).
 - `ml/pull_dataset.sh` copies the set to `ml/dataset/` over USB (`adb exec-out run-as … tar`) and prints per-class counts. Tested.

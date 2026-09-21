@@ -56,29 +56,42 @@ async function move(job, from, to, extra = {}) {
   return true;
 }
 
+// What the worker does next from each status, and how long a person would take to do it.
+const NEXT = {
+  requested: ['accepted', 3],
+  accepted: ['on_the_way', 4],
+  on_the_way: ['working', 5],
+  working: ['done', 6],
+};
+
 const handling = new Set();
 async function serve(job) {
   if (handling.has(job.id)) return;
   handling.add(job.id);
   const t0 = Date.now();
-  say(job.serial, `new request for ${names.get(job.worker_id)} (${job.category_code})`);
-  await wait(3);
-  if (!(await move(job, 'requested', 'accepted'))) return;
-  await wait(4);
-  if (!(await move(job, 'accepted', 'on_the_way'))) return;
-  await wait(5);
-  if (!(await move(job, 'on_the_way', 'working'))) return;
-  await wait(6);
-  if (!(await move(job, 'working', 'done', { price_agreed: price(job.category_code) }))) return;
-  say(job.serial, `worker side finished in ${((Date.now() - t0) / 1000).toFixed(1)} s - waiting for the customer to pay and rate`);
-  watching.set(job.id, { serial: job.serial, created: new Date(job.created_at).getTime(), last: 'done' });
+  say(job.serial, `${job.status === 'requested' ? 'new request' : `resuming at "${job.status}"`} for ${names.get(job.worker_id)} (${job.category_code})`);
+  try {
+    let status = job.status;
+    while (NEXT[status]) {
+      const [to, pause] = NEXT[status];
+      await wait(pause);
+      const ok = await move(job, status, to, to === 'done' ? { price_agreed: price(job.category_code) } : {});
+      if (!ok) return; // cancelled by the customer, or a network error: the next sweep looks again
+      status = to;
+    }
+    say(job.serial, `worker side finished in ${((Date.now() - t0) / 1000).toFixed(1)} s - waiting for the customer to pay and rate`);
+    watching.set(job.id, { serial: job.serial, created: new Date(job.created_at).getTime(), last: 'done' });
+  } finally {
+    // Never hold a job forever: after a failed step, or a bot restart, the sweep picks it up where it stands.
+    handling.delete(job.id);
+  }
 }
 
 // After "done" the phone takes over; report when the customer pays and rates, with the full loop time.
 const watching = new Map();
 async function sweep() {
   const ids = [...names.keys()];
-  const { data: fresh } = await db.from('requests').select('id,serial,worker_id,category_code,status,created_at').in('worker_id', ids).eq('status', 'requested');
+  const { data: fresh } = await db.from('requests').select('id,serial,worker_id,category_code,status,created_at').in('worker_id', ids).in('status', Object.keys(NEXT));
   fresh?.forEach(serve);
   if (watching.size === 0) return;
   const { data: later } = await db.from('requests').select('id,status,pay_method,updated_at').in('id', [...watching.keys()]);
@@ -99,5 +112,6 @@ db.channel(`bot-${Date.now()}`)
   .on('postgres_changes', { event: '*', schema: 'public', table: 'requests' }, sweep)
   .subscribe();
 setInterval(sweep, 2000); // floor, for networks that block websockets
+process.on('unhandledRejection', (e) => say(null, `error (will retry): ${e?.message ?? e}`));
 sweep();
 say(null, 'ready. On the phone: request any seeded worker. Ctrl+C to stop.');

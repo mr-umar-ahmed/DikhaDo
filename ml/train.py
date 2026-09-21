@@ -36,11 +36,37 @@ SIZE = 224
 SEED = 7
 
 
+def load(path, label):
+    """Decode exactly the way the app sees a photo: centre-crop to a square, then resize. No stretching."""
+    img = tf.io.decode_jpeg(tf.io.read_file(path), channels=3)
+    shape = tf.shape(img)
+    side = tf.minimum(shape[0], shape[1])
+    img = tf.image.resize_with_crop_or_pad(img, side, side)
+    img = tf.image.resize(img, (SIZE, SIZE), antialias=True)
+    return img, label  # float32, 0-255
+
+
 def datasets(root: pathlib.Path, batch: int):
-    common = dict(image_size=(SIZE, SIZE), batch_size=batch, seed=SEED, validation_split=0.2, label_mode="int")
-    train = tf.keras.utils.image_dataset_from_directory(root, subset="training", **common)
-    val = tf.keras.utils.image_dataset_from_directory(root, subset="validation", **common)
-    return train, val, train.class_names
+    classes = sorted(d.name for d in root.iterdir() if d.is_dir())
+    train_items, val_items, counts = [], [], {}
+    for i, c in enumerate(classes):
+        files = sorted(f for f in (root / c).iterdir() if f.suffix.lower() in (".jpg", ".jpeg"))
+        counts[c] = len(files)
+        # Dataset-mode filenames are capture timestamps, and one object is shot several times in a row.
+        # A random split would put near-identical shots on both sides and flatter every number below.
+        # Holding out the LAST 20% of each class validates on objects the model never trained on.
+        cut = max(1, int(len(files) * 0.8))
+        train_items += [(str(f), i) for f in files[:cut]]
+        val_items += [(str(f), i) for f in files[cut:]]
+
+    def make(items, shuffle):
+        paths, labels = zip(*items)
+        ds = tf.data.Dataset.from_tensor_slices((list(paths), list(labels)))
+        if shuffle:
+            ds = ds.shuffle(len(items), seed=SEED, reshuffle_each_iteration=True)
+        return ds.map(load, num_parallel_calls=tf.data.AUTOTUNE).batch(batch)
+
+    return make(train_items, True), make(val_items, False), classes, counts
 
 
 def build(n_classes: int) -> tf.keras.Model:
@@ -86,10 +112,9 @@ def main() -> None:
     args = ap.parse_args()
 
     tf.keras.utils.set_random_seed(SEED)
-    train, val, classes = datasets(args.data, args.batch)
+    train, val, classes, counts = datasets(args.data, args.batch)
     print("classes:", classes)
-    counts = {c: len(list((args.data / c).glob("*"))) for c in classes}
-    print("images per class:", counts)
+    print("images per class:", counts, "(last 20% of each, by capture time, held out for validation)")
     if min(counts.values()) < 60:
         print("WARNING: fewer than 60 images in some class - expect it to be unreliable. Aim for 150+.")
 

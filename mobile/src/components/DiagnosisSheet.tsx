@@ -54,6 +54,9 @@ export function DiagnosisSheet({ photoUri, diagnosis, onGo, onRetake, onUseAnywa
 
   const best = diagnosis.kind === 'sure' ? diagnosis.best : null;
   const bestEntry = best ? (best.problem ? byCode(best.problem) : undefined) ?? byCode(best.category) : undefined;
+  // The percentage is how sure the phone is of the CATEGORY, so the stamp names the category.
+  const bestCategory = best ? byCode(best.category) : undefined;
+  const candidates = diagnosis.kind === 'sure' ? 1 + diagnosis.others.length : diagnosis.kind === 'unsure' ? diagnosis.guesses.length : 0;
   const bestTo = best ? destinationFor(best) : null;
 
   return (
@@ -82,10 +85,12 @@ export function DiagnosisSheet({ photoUri, diagnosis, onGo, onRetake, onUseAnywa
           <Text style={[type.small, { color: colors.onPaperMuted }]}>{t('looksLike')}</Text>
           <View style={styles.stampRow}>
             <View style={styles.stamp}>
-              <Text style={[type.title, { color: colors.worklightAmber }]}>{bestEntry.name[lang]}</Text>
+              {/* Ink on paper inside an amber rule: amber text on this paper is only 2.5:1. */}
+              <Text style={[type.title, { color: colors.onPaper }]}>{(bestCategory ?? bestEntry).name[lang]}</Text>
             </View>
             <Text style={[coordinateStyle, { color: colors.onPaperMuted }]}>{Math.round(diagnosis.best.confidence * 100)}%</Text>
           </View>
+          {bestCategory && bestEntry.code !== bestCategory.code && <Text style={[type.title, { color: colors.onPaper }]}>{bestEntry.name[lang]}</Text>}
           <Text style={[type.body, { color: colors.onPaper }]}>{`${t('usualPrice')}  ₹${bestEntry.price[0]}–${bestEntry.price[1]}`}</Text>
           <SafetyCard code={bestEntry.code} speak />
           <PrimaryButton label={t('findWorkers')} onPress={() => onGo(bestTo)} />
@@ -109,7 +114,7 @@ export function DiagnosisSheet({ photoUri, diagnosis, onGo, onRetake, onUseAnywa
             <PrimaryButton label={t('useGrid')} onPress={onGrid} />
           ) : (
             <Pressable accessibilityRole="button" onPress={onGrid} style={styles.link}>
-              <Text style={[type.label, { color: colors.stampIndigo }]}>{t('noneOfThese')}</Text>
+              <Text style={[type.label, { color: colors.stampIndigo }]}>{t(candidates === 1 ? 'notThis' : 'noneOfThese')}</Text>
             </Pressable>
           )}
           <Pressable accessibilityRole="button" onPress={onRetake} style={styles.link}>

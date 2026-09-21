@@ -13,7 +13,7 @@ export type Hit = { category: string; problem?: string };
 
 const rules: [keywords: string[], hit: Hit][] = [
   // Fan and appliances
-  [['electric fan', 'blower'], { category: 'appliance', problem: 'fan_dead' }],
+  [['electric fan'], { category: 'appliance', problem: 'fan_dead' }],
   [['refrigerator', 'icebox'], { category: 'appliance', problem: 'cooler_fridge' }],
   [['washer', 'washing machine', 'microwave', 'toaster', 'waffle iron', 'vacuum', 'space heater', 'television', 'monitor', 'hand blower', 'hair dryer', 'rotisserie', 'crock pot', 'espresso maker', 'coffeepot', 'stove', 'dishwasher', 'loudspeaker', 'radio', 'cassette player', 'sewing machine', 'iron'],
     { category: 'appliance' }],
@@ -23,22 +23,22 @@ const rules: [keywords: string[], hit: Hit][] = [
   [['table lamp', 'lampshade', 'spotlight', 'electric guitar amplifier', 'power drill'], { category: 'electrical' }],
 
   // Plumbing
-  [['washbasin', 'handbasin', 'sink', 'bathtub', 'tub, vat', 'toilet seat', 'plunger', 'shower curtain', 'soap dispenser'], { category: 'plumbing', problem: 'tap_leak' }],
-  [['water tower', 'rain barrel', 'barrel, cask'], { category: 'plumbing', problem: 'tank_overflow' }],
+  [['washbasin', 'handbasin', 'sink', 'bathtub', 'tub', 'bucket', 'toilet seat', 'plunger', 'shower curtain', 'soap dispenser'], { category: 'plumbing', problem: 'tap_leak' }],
+  [['water tower', 'barrel'], { category: 'plumbing', problem: 'tank_overflow' }],
 
   // Bike and tractor repair
-  [['motor scooter', 'moped', 'mountain bike', 'bicycle', 'tricycle', 'tractor', 'car wheel', 'disk brake', 'disc brake', 'jeep', 'minivan', 'pickup', 'harvester', 'thresher', 'plow', 'go-kart', 'tow truck', 'minibus', 'cab, hack'],
+  [['motor scooter', 'moped', 'mountain bike', 'bicycle', 'tricycle', 'tractor', 'car wheel', 'disk brake', 'disc brake', 'jeep', 'minivan', 'pickup', 'harvester', 'thresher', 'plow', 'go-kart', 'tow truck', 'minibus', 'cab'],
     { category: 'mechanic' }],
 
   // Carpentry
-  [['folding chair', 'rocking chair', 'dining table', 'desk', 'wardrobe', 'chiffonier', 'bookcase', 'china cabinet', 'sliding door', 'chest', 'cradle', 'crib', 'four-poster', 'studio couch', 'park bench', 'window shade', 'window screen', 'file, file cabinet', 'medicine chest', 'throne', 'barber chair'],
+  [['folding chair', 'rocking chair', 'dining table', 'desk', 'wardrobe', 'chiffonier', 'bookcase', 'china cabinet', 'sliding door', 'chest', 'cradle', 'crib', 'four-poster', 'studio couch', 'park bench', 'window shade', 'window screen', 'file', 'medicine chest', 'throne', 'barber chair'],
     { category: 'carpentry' }],
 
   // Garbage pickup
-  [['ashcan', 'trash can', 'garbage', 'dustbin', 'plastic bag', 'carton', 'crate', 'packet'], { category: 'waste', problem: 'bulk_waste' }],
+  [['ashcan', 'trash can', 'garbage', 'dustbin', 'plastic bag'], { category: 'waste', problem: 'bulk_waste' }],
 
   // Cleaning
-  [['broom', 'swab', 'mop', 'bucket, pail'], { category: 'cleaning' }],
+  [['broom', 'swab', 'mop'], { category: 'cleaning' }],
 
   // Mason and painting
   [['paintbrush', 'stone wall', 'tile roof', 'brick'], { category: 'mason' }],
@@ -62,6 +62,15 @@ export function hitForLabel(label: string): Hit | null {
   const text = label.toLowerCase();
   for (const m of matchers) if (m.tests.some((t) => t.test(text))) return m.hit;
   return null;
+}
+
+/** The strongest single label that is NOT a job (a dog, a face, the fine-tuned "other"). */
+export function strongestNonJob(labels: readonly string[], probabilities: ArrayLike<number>): number {
+  let best = 0;
+  for (let i = 0; i < probabilities.length; i++) {
+    if (probabilities[i] > best && !hitForLabel(labels[i] ?? '')) best = probabilities[i];
+  }
+  return best;
 }
 
 export type CategoryScore = { category: string; problem?: string; confidence: number };

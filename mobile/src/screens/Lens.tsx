@@ -1,17 +1,20 @@
 import * as Haptics from 'expo-haptics';
-import { useIsFocused, useRouter } from 'expo-router';
+import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { BackHandler, Image, Linking, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Camera, CommonResolutions, useCameraPermission, usePhotoOutput } from 'react-native-vision-camera';
 import { takeShot, type Shot } from '@/ai/capture';
 import { diagnose, type Diagnosis } from '@/ai/diagnose';
 import { classify, INPUT_SIZE } from '@/ai/model';
+import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { DiagnosisSheet, type Destination } from '@/components/DiagnosisSheet';
+import { Notice } from '@/components/paper';
 import { usePrefs } from '@/lib/prefs';
+import { bookingCount, openJobId } from '@/lib/requests';
 import { colors, radius, space, touch } from '@/theme/tokens';
 import { typeScale } from '@/theme/type';
 
@@ -23,8 +26,11 @@ const TUCK_MS = 460;
  * is touched between the shutter and the diagnosis. The one orchestrated motion in the app lives
  * here: the frozen frame shrinks into the header of a paper sheet rising from below. Reduced-motion
  * settings are honoured by Reanimated itself (the values jump to their end state).
+ *
+ * `onGrid(remember)`: leave for the picture grid. remember = the user chose the grid as their way
+ * in; false = a one-off detour because this photo was not recognised.
  */
-export function Lens({ onGrid }: { onGrid: () => void }) {
+export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
   const { lang } = usePrefs();
   const { t } = useTranslation();
   const type = typeScale(lang);
@@ -40,6 +46,7 @@ export function Lens({ onGrid }: { onGrid: () => void }) {
   const [shot, setShot] = useState<Shot | null>(null);
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [trouble, setTrouble] = useState<'camera' | 'shot' | null>(null);
+  const [activeJob, setActiveJob] = useState<string | null>(null);
 
   const tuck = useSharedValue(0);
   const frameStyle = useAnimatedStyle(() => ({
@@ -51,6 +58,41 @@ export function Lens({ onGrid }: { onGrid: () => void }) {
     opacity: interpolate(tuck.value, [0.88, 1], [1, 0], 'clamp'),
   }));
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - tuck.value) * height }] }));
+
+  const retake = useCallback(() => {
+    tuck.value = 0;
+    setShot(null);
+    setDiagnosis(null);
+    setStage('camera');
+  }, [tuck]);
+
+  // Coming back to this screen: a job in progress must be one tap away, and if a job was booked
+  // from the last photo, that photo is finished business - start with a fresh viewfinder.
+  const bookingsSeen = useRef(bookingCount());
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      openJobId().then((id) => alive && setActiveJob(id));
+      if (bookingCount() !== bookingsSeen.current) {
+        bookingsSeen.current = bookingCount();
+        retake();
+      }
+      return () => {
+        alive = false;
+      };
+    }, [retake]),
+  );
+
+  // The sheet looks like a pushed screen, so BACK must behave like one: return to the camera,
+  // not close the app. Only while this screen is in front - it stays mounted under /workers.
+  useEffect(() => {
+    if (!focused || stage === 'camera') return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (stage === 'sheet') retake();
+      return true;
+    });
+    return () => sub.remove();
+  }, [focused, stage, retake]);
 
   const judge = useCallback(
     async (s: Shot, skipQualityGate: boolean) => {
@@ -77,15 +119,9 @@ export function Lens({ onGrid }: { onGrid: () => void }) {
     }
   };
 
-  const retake = () => {
-    tuck.value = 0;
-    setShot(null);
-    setDiagnosis(null);
-    setStage('camera');
-  };
-
   const go = (to: Destination) =>
     router.push(to.screen === 'workers' ? { pathname: '/workers/[code]', params: { code: to.code } } : { pathname: '/category/[code]', params: { code: to.code } });
+  const openJob = () => activeJob && router.push({ pathname: '/job/[id]', params: { id: activeJob } });
 
   if (!permission.hasPermission) {
     return (
@@ -100,9 +136,10 @@ export function Lens({ onGrid }: { onGrid: () => void }) {
         >
           <Text style={[type.label, styles.onAmber]}>{t(permission.canRequestPermission ? 'allowCamera' : 'openSettings')}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={onGrid} style={styles.linkButton}>
+        <Pressable accessibilityRole="button" onPress={() => onGrid(true)} style={styles.linkButton}>
           <Text style={[type.label, styles.onLens]}>{t('useGrid')}</Text>
         </Pressable>
+        <ChangeRoleLink color={colors.onLensMuted} />
       </View>
     );
   }
@@ -123,7 +160,13 @@ export function Lens({ onGrid }: { onGrid: () => void }) {
         <Text style={[type.small, styles.onLens]}>{t('worksOnWeakSignal')}</Text>
       </View>
 
-      <View style={[styles.controls, { paddingBottom: insets.bottom + space.lg }]}>
+      <View style={[styles.controls, { paddingBottom: insets.bottom + space.md }]}>
+        {activeJob && (
+          <Pressable accessibilityRole="button" onPress={openJob} style={({ pressed }) => [styles.jobPill, pressed && styles.pressed]}>
+            <Text style={[type.label, styles.onAmber]}>{t('yourActiveJob')}</Text>
+            <Text style={[type.small, styles.onAmber]}>{t('openJob')}</Text>
+          </Pressable>
+        )}
         {trouble && (
           <View style={styles.trouble}>
             <Text style={[type.body, styles.onLens]}>{t(trouble === 'camera' ? 'cameraFailed' : 'shotFailed')}</Text>
@@ -139,15 +182,18 @@ export function Lens({ onGrid }: { onGrid: () => void }) {
         >
           <View style={styles.shutterCore} />
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={onGrid} style={styles.linkButton}>
+        <Pressable accessibilityRole="button" onPress={() => onGrid(true)} style={styles.linkButton}>
           <Text style={[type.label, styles.onLens]}>{t('useGrid')}</Text>
         </Pressable>
+        <ChangeRoleLink color={colors.onLensMuted} />
       </View>
 
       {diagnosis && shot && (
         <Animated.View style={[styles.sheet, { paddingTop: insets.top }, sheetStyle]}>
           <ScrollView contentContainerStyle={[styles.sheetBody, { paddingBottom: insets.bottom + space.xl }]}>
-            <DiagnosisSheet photoUri={shot.uri} diagnosis={diagnosis} onGo={go} onRetake={retake} onUseAnyway={() => judge(shot, true)} onGrid={onGrid} />
+            <DiagnosisSheet photoUri={shot.uri} diagnosis={diagnosis} onGo={go} onRetake={retake} onUseAnyway={() => judge(shot, true)} onGrid={() => onGrid(false)} />
+            {/* Below the record, not above it: the frozen frame lands on the header's fixed position. */}
+            {activeJob && <Notice title={t('yourActiveJob')} action={t('openJob')} onAction={openJob} />}
           </ScrollView>
         </Animated.View>
       )}
@@ -166,10 +212,11 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.lensInk },
   centred: { paddingHorizontal: space.lg, gap: space.md },
   onLens: { color: colors.onLens },
-  onAmber: { color: colors.lensInk, fontSize: 17 },
+  onAmber: { color: colors.lensInk },
   muted: { color: colors.onLensMuted },
   badge: { position: 'absolute', left: space.lg, backgroundColor: colors.stampGreen, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 4 },
-  controls: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingTop: space.lg, backgroundColor: 'rgba(13,14,12,0.55)' },
+  controls: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.lg, backgroundColor: 'rgba(13,14,12,0.55)' },
+  jobPill: { alignSelf: 'stretch', minHeight: touch, borderRadius: radius.md, backgroundColor: colors.worklightAmber, alignItems: 'center', justifyContent: 'center', paddingVertical: space.xs },
   hint: { color: colors.onLens, textAlign: 'center' },
   trouble: { backgroundColor: colors.registerRed, borderRadius: radius.md, padding: space.md, alignSelf: 'stretch' },
   shutter: { width: 84, height: 84, borderRadius: 42, borderWidth: 4, borderColor: colors.onLens, alignItems: 'center', justifyContent: 'center' },
@@ -178,7 +225,7 @@ const styles = StyleSheet.create({
   amberButton: { minHeight: touch, borderRadius: radius.md, backgroundColor: colors.worklightAmber, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.lg, marginTop: space.md },
   linkButton: { minHeight: touch, justifyContent: 'center', paddingHorizontal: space.md },
   sheet: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: colors.formPaper },
+  sheetBody: { padding: space.lg, gap: space.md },
   fill: { width: '100%', height: '100%' },
-  sheetBody: { padding: space.lg },
   frame: { position: 'absolute', overflow: 'hidden', backgroundColor: colors.lensInk },
 });

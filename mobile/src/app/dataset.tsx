@@ -51,6 +51,7 @@ export default function DatasetMode() {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [last, setLast] = useState<{ file: File; cls: string } | null>(null);
 
   useEffect(() => setCounts(countAll()), []);
 
@@ -62,7 +63,9 @@ export default function DatasetMode() {
       const temp = await takeTrainingPhoto(photoOutput);
       const dir = folderFor(cls);
       dir.create({ intermediates: true, idempotent: true });
-      await new File(temp.startsWith('file://') ? temp : `file://${temp}`).move(new File(dir, `${Date.now()}.jpg`));
+      const saved = new File(dir, `${Date.now()}.jpg`);
+      await new File(temp.startsWith('file://') ? temp : `file://${temp}`).move(saved);
+      setLast({ file: saved, cls });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setCounts((c) => ({ ...c, [cls]: (c[cls] ?? 0) + 1 }));
     } catch (e) {
@@ -71,6 +74,17 @@ export default function DatasetMode() {
       setBusy(false);
     }
   }, [busy, cls, photoOutput]);
+
+  const undo = () => {
+    if (!last) return;
+    try {
+      if (last.file.exists) last.file.delete();
+      setCounts((c) => ({ ...c, [last.cls]: Math.max(0, (c[last.cls] ?? 1) - 1) }));
+      setLast(null);
+    } catch (e) {
+      setProblem(e instanceof Error ? e.message : 'The photo could not be removed.');
+    }
+  };
 
   if (!__DEV__) return <Redirect href="/" />;
 
@@ -117,6 +131,9 @@ export default function DatasetMode() {
         <Pressable accessibilityLabel="Take training photo" onPress={shoot} disabled={busy || !permission.hasPermission} style={({ pressed }) => [styles.shutter, (pressed || busy) && { opacity: 0.6 }]}>
           <Text style={styles.count}>{n}</Text>
           <Text style={styles.of}>of {TARGET}</Text>
+        </Pressable>
+        <Pressable onPress={undo} disabled={!last} hitSlop={10} style={{ minHeight: 44, justifyContent: 'center', opacity: last ? 1 : 0.35 }}>
+          <Text style={styles.text}>Remove the last photo{last ? ` (${last.cls.replace('__', ' / ')})` : ''}</Text>
         </Pressable>
       </View>
     </View>

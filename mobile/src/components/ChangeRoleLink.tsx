@@ -5,7 +5,7 @@ import { usePrefs } from '@/lib/prefs';
 import { colors, touch } from '@/theme/tokens';
 import { typeScale } from '@/theme/type';
 
-export function ChangeRoleLink() {
+export function ChangeRoleLink({ color = colors.stampIndigo }: { color?: string }) {
   const { lang, setRole } = usePrefs();
   const { t } = useTranslation();
   const router = useRouter();
@@ -19,7 +19,7 @@ export function ChangeRoleLink() {
       }}
       style={({ pressed }) => [{ minHeight: touch, justifyContent: 'center' }, pressed && { opacity: 0.6 }]}
     >
-      <Text style={[typeScale(lang).label, { color: colors.stampIndigo }]}>{t('changeRole')}</Text>
+      <Text style={[typeScale(lang).label, { color }]}>{t('changeRole')}</Text>
     </Pressable>
   );
 }

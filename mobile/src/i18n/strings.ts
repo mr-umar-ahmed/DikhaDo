@@ -125,7 +125,8 @@ const en = {
 
   lensHint: 'Point at what is broken, then press the button',
   takePhoto: 'Take the picture',
-  useGrid: 'Choose from pictures',
+  useGrid: 'Choose the problem yourself',
+  notThis: 'Not this',
   useCamera: 'Show it with the camera',
   cameraBlockedTitle: 'DikhaDo cannot use the camera',
   cameraBlockedBody: 'Allow the camera, or choose what is broken from the pictures.',
@@ -276,7 +277,8 @@ const hi: Strings = {
 
   lensHint: 'जो खराब है उस पर कैमरा कीजिए, फिर बटन दबाइए',
   takePhoto: 'फ़ोटो लीजिए',
-  useGrid: 'तस्वीरों में से चुनें',
+  useGrid: 'खुद चुनें कि क्या खराब है',
+  notThis: 'यह नहीं',
   useCamera: 'कैमरे से दिखाइए',
   cameraBlockedTitle: 'DikhaDo कैमरा इस्तेमाल नहीं कर पा रहा',
   cameraBlockedBody: 'कैमरे की अनुमति दीजिए, या तस्वीरों में से चुनिए कि क्या खराब है।',
@@ -425,7 +427,8 @@ const te: Strings = {
 
   lensHint: 'పాడైన దానివైపు కెమెరా చూపించి, బటన్ నొక్కండి',
   takePhoto: 'ఫోటో తీయండి',
-  useGrid: 'బొమ్మల నుండి ఎంచుకోండి',
+  useGrid: 'ఏది పాడైందో మీరే ఎంచుకోండి',
+  notThis: 'ఇది కాదు',
   useCamera: 'కెమెరాతో చూపించండి',
   cameraBlockedTitle: 'DikhaDo కెమెరాను వాడలేకపోతోంది',
   cameraBlockedBody: 'కెమెరాకు అనుమతి ఇవ్వండి, లేదా ఏది పాడైందో బొమ్మల నుండి ఎంచుకోండి.',
