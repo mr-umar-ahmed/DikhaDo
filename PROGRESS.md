@@ -9,7 +9,7 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 | 0 | Scaffold: tokens, fonts, en/hi/te, roles, schema | ✅ done | passed (emulator + phone) |
 | 1 | Directory spine: picker → on-duty workers → call / WhatsApp | ✅ done | passed on phone |
 | 2 | Job lifecycle: request → accept → track → pay → rate | ✅ done, reviewed, hardened | one-phone loop passed · two-phone < 60 s timing **open** |
-| 3 | Local AI I — *See*: camera, on-device classifier, quality gate, safety card | 🔨 working on phone (72 ms) · fine-tuned model + `ml/` pending | airplane-mode 10-snap gate **open** |
+| 3 | Local AI I — *See*: camera, on-device classifier, quality gate, safety card | ✅ done (72 ms on device) · fine-tuned model awaits the dataset | **passed** on phone, airplane mode |
 | 4 | Local AI II — *Hear*: on-device speech → category; photo + voice on the job | ⏳ | — |
 | 5 | Trust + Department Console | ⏳ | — |
 | 6 | One-bar resilience + Sahayak mode | ⏳ | — |
@@ -20,14 +20,16 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 **Verification in place:** TypeScript strict typecheck · `mobile/scripts/lifecycle-test.mjs` (33 backend checks, last run green, realtime median ≈ 500 ms) · Metro bundle build · adversarial multi-agent code review (`docs/review-phase2.json`).
 
 **Open items carried forward**
-- Two-phone timing gate for Phase 2 (needs a second device, or the Phase 5 console acting as the worker).
-- Seeded demo workers cannot answer a request → 60 s "no answer" notice today; console accept-on-behalf planned in Phase 5.
+- Phase 2 timing gate: now runnable with one phone + `scripts/demo-bot.mjs`; result still to be recorded.
 - Real SMS OTP is out of scope (paid everywhere); identity is a locally stored profile. Flagged, not hidden.
 - RLS is wide open for the hackathon; marked in `0001_init.sql`.
 
 ---
 
 ## Phase 3 — Local AI I: *See* (in progress)
+
+**2026-09-21 · Phase 3 physical gate: PASSED (user, Redmi Note 13 Pro+)**
+Airplane-mode snaps: switchboard, appliances and carpentry were all recognised correctly, no crashes, answers well under a second (72 ms inference). Tap / plumbing was not reported - to be re-checked once the fine-tuned model lands.
 
 **2026-09-21 · Training pipeline (`ml/`) + drop-in label routing** · _this commit_
 `ml/train.py` — MobileNetV3-Small transfer learning for self-shot photos: field-style augmentation, class weighting, head training then a low-rate fine-tune of the top 40 layers, **per-class** validation report, full-integer INT8 export (uint8 in/out, softmax in the graph), and an accuracy check of the quantised model that actually ships. Folder names are the routing (`electrical__switchboard` → `dikhado:electrical/switchboard`); an `other` class lets the phone say "I cannot tell". `ml/README.md` is the shooting guide. App side: `labelMap.ts` routes `dikhado:` labels directly, so the fine-tuned model is a `MANIFEST` change and nothing else; 24 unit checks green.
@@ -58,6 +60,10 @@ In flight: a 6-agent source-reading workflow extracting the exact vision-camera 
 ---
 
 ## Phase 2 — Job lifecycle ✅
+
+**2026-09-21 · Demo bot: the laptop plays the seeded workers** · _this commit_
+`mobile/scripts/demo-bot.mjs` answers any request addressed to the 12 seeded workers - accept → on the way → working → done with a rate-card price - using the same guarded status moves as the app, realtime plus a 2 s poll, and prints the full request → rated loop time. `--here lat,lng` first moves the seeded workers to the demo spot; `--fast` shortens the pauses. Verified live: Ramesh Goud took a probe request to *done (₹230)* in 4.7 s; probe rows removed.
+This **closes the last open review finding** (a request to a seeded worker used to wait forever) and makes the Phase 2 timing gate runnable with **one phone**: phone = customer, laptop = worker.
 
 **2026-09-21 · Review fixes** · `53192ff`
 A 35-agent review (5 finders, one skeptic per finding, 30 findings, 0 refuted) ran against Phases 1–2. Fixed:
