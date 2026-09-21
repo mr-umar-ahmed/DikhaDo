@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -12,6 +13,7 @@ import { topLevel } from '@/data/catalog';
 import { heartbeat, registerWorker, WorkerGone, type WorkerProfile } from '@/lib/api';
 import { currentPoint, LocationDenied, LocationUnavailable } from '@/lib/location';
 import { usePrefs } from '@/lib/prefs';
+import { supabase } from '@/lib/supabase';
 import { colors, radius, space, touch } from '@/theme/tokens';
 import { typeScale } from '@/theme/type';
 
@@ -190,11 +192,56 @@ function Duty({ profile, onGone }: { profile: WorkerProfile; onGone: () => void 
       {problem === 'backend' && <Notice tone="warn" title={t('dutyError')} />}
 
       <PrimaryButton label={t(onDuty ? 'goOffDuty' : 'goOnDuty')} onPress={flip} disabled={busy} tone={onDuty ? 'ink' : 'green'} />
+      <Badge workerId={profile.profileId} />
       {/* Jobs already accepted must stay reachable even after going off duty. */}
       <WorkerInbox workerId={profile.profileId} />
       <ChangeRoleLink />
     </PaperScreen>
   );
+}
+
+/** Verified, being checked, rejected, or not asked yet - read fresh whenever the screen comes back into view, and every few seconds while a check is pending. */
+function Badge({ workerId }: { workerId: string }) {
+  const { lang } = usePrefs();
+  const { t } = useTranslation();
+  const router = useRouter();
+  const [state, setState] = useState<'unknown' | 'none' | 'pending' | 'approved' | 'rejected'>('unknown');
+
+  const read = useCallback(async () => {
+    if (!supabase) return;
+    const [w, v] = await Promise.all([
+      supabase.from('workers').select('verified').eq('profile_id', workerId).maybeSingle(),
+      supabase.from('verifications').select('status').eq('worker_id', workerId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    ]);
+    if (w.error) return; // no signal: keep showing what we last knew
+    if (w.data?.verified) return setState('approved');
+    setState(v.data?.status === 'pending' ? 'pending' : v.data?.status === 'rejected' ? 'rejected' : 'none');
+  }, [workerId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      read();
+    }, [read]),
+  );
+  useEffect(() => {
+    if (state !== 'pending') return;
+    const timer = setInterval(read, 6000);
+    return () => clearInterval(timer);
+  }, [state, read]);
+
+  const ask = () => router.push({ pathname: '/verify-me', params: { worker: workerId } });
+  if (state === 'unknown') return null;
+  if (state === 'approved') {
+    return (
+      <View style={styles.verified}>
+        <MaterialCommunityIcons name="check-decagram" size={22} color={colors.stampGreen} />
+        <Text style={[typeScale(lang).label, { color: colors.stampGreen }]}>{t('verifyApproved')}</Text>
+      </View>
+    );
+  }
+  if (state === 'pending') return <Notice title={t('verifyPending')} />;
+  if (state === 'rejected') return <Notice tone="warn" title={t('verifyRejected')} action={t('getVerified')} onAction={ask} />;
+  return <Notice title={t('getVerified')} body={t('verifyWhy')} action={t('getVerified')} onAction={ask} />;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -212,6 +259,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   chip: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.paperRule, backgroundColor: colors.paperRaised },
   chipOn: { backgroundColor: colors.worklightAmber, borderColor: colors.worklightAmber },
+  verified: { flexDirection: 'row', alignItems: 'center', gap: space.sm, alignSelf: 'flex-start', borderWidth: 2, borderColor: colors.stampGreen, paddingHorizontal: 12, paddingVertical: 6, transform: [{ rotate: '-2deg' }] },
   dutyCard: { alignItems: 'center', gap: space.sm, padding: space.xl, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.paperRule, backgroundColor: colors.paperRaised },
   dutyCardOn: { backgroundColor: colors.stampGreen, borderColor: colors.stampGreen },
 });

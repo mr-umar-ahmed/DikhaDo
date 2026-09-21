@@ -1,15 +1,17 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Haptics from 'expo-haptics';
+import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
 import { byCode } from '@/data/catalog';
 import { usePrefs } from '@/lib/prefs';
 import { moveJob, rateJob, StaleJob, useLiveJob, workerUpi, type Job, type Status } from '@/lib/requests';
 import { colors, radius, space, touch } from '@/theme/tokens';
-import { serialStyle, typeScale } from '@/theme/type';
+import { coordinateStyle, serialStyle, typeScale } from '@/theme/type';
 
 const steps: Status[] = ['requested', 'accepted', 'on_the_way', 'working', 'done'];
 const NO_ANSWER_MS = 60_000;
@@ -121,6 +123,7 @@ export default function JobScreen() {
       )}
 
       {job.status === 'done' && <Pay job={job} busy={busy} run={run} />}
+      {(job.status === 'paid' || job.status === 'rated') && <Receipt job={job} />}
       {job.status === 'paid' && <Rate job={job} busy={busy} run={run} />}
       {job.status === 'rated' && <Notice title={t('st_rated')} action={t('bookAnother')} onAction={() => router.dismissTo('/home')} />}
     </PaperScreen>
@@ -170,6 +173,60 @@ function Pay({ job, busy, run }: { job: Job; busy: boolean; run: Run }) {
   );
 }
 
+/** Paper receipt. Rendered on screen, and captured as an image for WhatsApp: for many workers the first invoice they have ever issued. */
+function Receipt({ job }: { job: Job }) {
+  const { lang } = usePrefs();
+  const { t } = useTranslation();
+  const type = typeScale(lang);
+  const sheet = useRef<View>(null);
+  const category = byCode(job.category_code);
+
+  const share = async () => {
+    try {
+      const uri = await captureRef(sheet, { format: 'png', quality: 1 });
+      if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: `DikhaDo ${job.serial}` });
+    } catch {
+      // Sharing is a convenience; the receipt stays on screen either way.
+    }
+  };
+
+  return (
+    <>
+      <View ref={sheet} collapsable={false} style={styles.receipt}>
+        <View style={styles.receiptHead}>
+          <View style={{ flex: 1 }}>
+            <Text style={[type.title, { color: colors.onPaper }]}>DikhaDo</Text>
+            <Text style={[type.small, { color: colors.onPaperMuted }]}>{t('receipt')}</Text>
+          </View>
+          <View style={styles.paidStamp}>
+            <Text style={[type.small, { color: colors.stampGreen }]}>{t('paidStamp')}</Text>
+          </View>
+        </View>
+        <Text style={[serialStyle, { color: colors.onPaper }]}>{job.serial}</Text>
+        <Text style={[coordinateStyle, { color: colors.onPaperMuted }]}>{new Date(job.updated_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</Text>
+        <View style={styles.receiptRule} />
+        <Line label={t('problemLabel')} value={category?.name[lang] ?? job.category_code} />
+        <Line label={t('workDoneBy')} value={job.worker?.name ?? ''} />
+        <Line label={t('paidBy')} value={t(job.pay_method === 'upi' ? 'methodUpi' : 'methodCash')} />
+        <View style={styles.receiptRule} />
+        <Text style={[type.display, { color: colors.onPaper }]}>₹{(job.price_agreed ?? 0).toLocaleString('en-IN')}</Text>
+      </View>
+      <PrimaryButton label={t('shareReceipt')} icon="share-variant" tone="ink" onPress={share} />
+    </>
+  );
+}
+
+function Line({ label, value }: { label: string; value: string }) {
+  const { lang } = usePrefs();
+  const type = typeScale(lang);
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
+      <Text style={[type.small, { color: colors.onPaperMuted }]}>{label}</Text>
+      <Text style={[type.label, { color: colors.onPaper, flexShrink: 1, textAlign: 'right' }]}>{value}</Text>
+    </View>
+  );
+}
+
 const tags = ['on_time', 'fair_price', 'good_work'] as const;
 
 function Rate({ job, busy, run }: { job: Job; busy: boolean; run: Run }) {
@@ -205,6 +262,10 @@ function Rate({ job, busy, run }: { job: Job; busy: boolean; run: Run }) {
 }
 
 const styles = StyleSheet.create({
+  receipt: { gap: space.sm, backgroundColor: colors.formPaper, borderWidth: 1, borderColor: colors.onPaper, padding: space.lg },
+  receiptHead: { flexDirection: 'row', alignItems: 'center' },
+  receiptRule: { height: 1, backgroundColor: colors.paperRule, marginVertical: space.xs },
+  paidStamp: { borderWidth: 2, borderColor: colors.stampGreen, paddingHorizontal: 8, paddingVertical: 2, transform: [{ rotate: '-6deg' }] },
   timeline: { gap: space.md, borderWidth: 1, borderColor: colors.paperRule, borderRadius: radius.md, backgroundColor: colors.paperRaised, padding: space.md },
   step: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   dot: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: colors.paperRule, alignItems: 'center', justifyContent: 'center' },

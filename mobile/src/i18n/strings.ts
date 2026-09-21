@@ -205,6 +205,25 @@ const en = {
   'civicReason_different-place': 'This does not look like the same place',
   'civicReason_never-seen': 'The phone cannot judge this kind of problem',
   'civicReason_not-sure': 'The phone is not sure',
+
+  getVerified: 'Get the Verified badge',
+  verifyWhy: 'Customers choose verified workers first',
+  verifyIdHint: 'Take a picture of your ID card: Aadhaar, voter ID or licence',
+  verifySelfieHint: 'Now a picture of your face',
+  stepId: 'Your ID card',
+  stepSelfie: 'Your face',
+  verifySend: 'Send for checking',
+  verifyPrivacy: 'Only the DikhaDo team sees these pictures. Customers never do.',
+  verifyPending: 'Your ID is being checked. The badge appears here when it is approved.',
+  verifyApproved: 'You are a verified worker',
+  verifyRejected: 'Your ID could not be approved. Send a clearer picture.',
+  receipt: 'Receipt',
+  workDoneBy: 'Work done by',
+  paidBy: 'Paid by',
+  methodCash: 'Cash',
+  methodUpi: 'UPI',
+  shareReceipt: 'Share the receipt',
+  paidStamp: 'PAID',
 };
 
 export type Strings = typeof en;
@@ -412,6 +431,25 @@ const hi: Strings = {
   'civicReason_different-place': 'यह वही जगह नहीं लग रही',
   'civicReason_never-seen': 'इस तरह की समस्या फ़ोन नहीं परख सकता',
   'civicReason_not-sure': 'फ़ोन पक्का नहीं कह सकता',
+
+  getVerified: 'सत्यापित का निशान पाइए',
+  verifyWhy: 'ग्राहक सत्यापित कारीगर को पहले चुनते हैं',
+  verifyIdHint: 'अपने पहचान पत्र की फ़ोटो लीजिए: आधार, वोटर आईडी या लाइसेंस',
+  verifySelfieHint: 'अब अपने चेहरे की फ़ोटो',
+  stepId: 'आपका पहचान पत्र',
+  stepSelfie: 'आपका चेहरा',
+  verifySend: 'जाँच के लिए भेजें',
+  verifyPrivacy: 'ये फ़ोटो सिर्फ़ DikhaDo की टीम देखती है। ग्राहक कभी नहीं।',
+  verifyPending: 'आपके पहचान पत्र की जाँच हो रही है। मंज़ूरी मिलते ही निशान यहाँ दिखेगा।',
+  verifyApproved: 'आप सत्यापित कारीगर हैं',
+  verifyRejected: 'आपका पहचान पत्र मंज़ूर नहीं हो पाया। साफ़ फ़ोटो भेजिए।',
+  receipt: 'रसीद',
+  workDoneBy: 'काम किया',
+  paidBy: 'भुगतान का तरीका',
+  methodCash: 'नकद',
+  methodUpi: 'UPI',
+  shareReceipt: 'रसीद भेजें',
+  paidStamp: 'भुगतान हुआ',
 };
 
 const te: Strings = {
@@ -617,6 +655,25 @@ const te: Strings = {
   'civicReason_different-place': 'ఇది అదే చోటులా కనిపించడం లేదు',
   'civicReason_never-seen': 'ఈ రకమైన సమస్యను ఫోన్ అంచనా వేయలేదు',
   'civicReason_not-sure': 'ఫోన్ ఖచ్చితంగా చెప్పలేకపోతోంది',
+
+  getVerified: 'ధృవీకరణ గుర్తు పొందండి',
+  verifyWhy: 'కస్టమర్లు ధృవీకరించిన పనివారినే ముందుగా ఎంచుకుంటారు',
+  verifyIdHint: 'మీ గుర్తింపు కార్డు ఫోటో తీయండి: ఆధార్, ఓటర్ ఐడీ లేదా లైసెన్స్',
+  verifySelfieHint: 'ఇప్పుడు మీ ముఖం ఫోటో',
+  stepId: 'మీ గుర్తింపు కార్డు',
+  stepSelfie: 'మీ ముఖం',
+  verifySend: 'పరిశీలనకు పంపండి',
+  verifyPrivacy: 'ఈ ఫోటోలను DikhaDo బృందం మాత్రమే చూస్తుంది. కస్టమర్లు ఎప్పటికీ చూడరు.',
+  verifyPending: 'మీ గుర్తింపు కార్డును పరిశీలిస్తున్నాం. ఆమోదం రాగానే గుర్తు ఇక్కడ కనిపిస్తుంది.',
+  verifyApproved: 'మీరు ధృవీకరించిన పనివారు',
+  verifyRejected: 'మీ గుర్తింపు కార్డు ఆమోదం పొందలేదు. స్పష్టమైన ఫోటో పంపండి.',
+  receipt: 'రసీదు',
+  workDoneBy: 'పని చేసినవారు',
+  paidBy: 'చెల్లింపు విధానం',
+  methodCash: 'నగదు',
+  methodUpi: 'UPI',
+  shareReceipt: 'రసీదు పంపండి',
+  paidStamp: 'చెల్లించారు',
 };
 
 export const resources = {

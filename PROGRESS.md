@@ -11,7 +11,7 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 | 2 | Job lifecycle: request → accept → track → pay → rate | ✅ done, reviewed, hardened | one-phone loop passed · two-phone < 60 s timing **open** |
 | 3 | Local AI I — *See*: camera, on-device classifier, quality gate, safety card | ✅ done (72 ms on device) · fine-tuned model awaits the dataset | **passed** on phone, airplane mode |
 | 4 | Local AI II — *Hear*: on-device speech → category; photo + voice on the job | ✅ built, speech engine verified on phone | spoken-phrase test + media upload need migration 0004 |
-| 5 | Trust + Department Console | 🔨 console done and verified; in-app ID upload next | — |
+| 5 | Trust + Department Console | ✅ built (console verified in browser; ID upload + receipt in app) | laptop-approves-badge gate open (needs migration 0004) |
 | 6 | One-bar resilience + Sahayak mode | 🔨 offline queue built; Sahayak pending | airplane-mode booking gate open |
 | 7 | Local AI III — Proof of Fix + civic rail | ✅ built, unit-tested, renders on phone | remove-the-trash re-scan gate open (needs migration 0004) |
 | 8 | Local AI IV — *Write* (optional tiny LLM) | ⏳ | — |
@@ -27,6 +27,11 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 ---
 
 ## Phases 4-6 — *Hear*, media on the job, console, offline queue (built; physical gates open)
+
+**2026-09-21 · Phase 5 (app side): Verified badge flow + shareable receipt** · _this commit_
+- `/verify-me` - the worker photographs an ID card (back camera) and their face (front camera); both go to a **private** storage bucket the console reads through 5-minute signed links; a `verifications` row starts the check. The duty screen shows where the badge stands - ask / being checked / approved (green stamp) / rejected with a way to retry - refreshed on focus and every 6 s while pending, so the approval made on the laptop appears on the phone by itself.
+- Receipt on the job screen once paid: paper sheet, mono serial and timestamp, problem, worker, method, amount, green PAID stamp; **Share the receipt** renders it to an image (`react-native-view-shot`) and opens the share sheet (`expo-sharing`) - the worker's first formal invoice, sent over WhatsApp.
+- 36 new strings in en/hi/te. Typecheck clean; bundle builds.
 
 **2026-09-21 · Phase 7: civic rail + on-device Proof of Fix** · _this commit_
 - `/report` - pick the kind (garbage, drain, pothole, streetlight, water pipe; icon + speaker), add a picture, optional note, **Send to the department**. Reached from the grid home and from the camera sheet ("This is on public land. Report it to the panchayat" - a full indigo button when the phone saw waste, a quiet link otherwise; the photo and its tensor ride along, so no second shot).
