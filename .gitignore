@@ -19,3 +19,4 @@ metro.log
 
 console/config.js
 *.log
+dist/
