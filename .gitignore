@@ -18,3 +18,4 @@ build-android.log
 metro.log
 
 console/config.js
+*.log
