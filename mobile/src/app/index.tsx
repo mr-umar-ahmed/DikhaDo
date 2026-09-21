@@ -69,6 +69,13 @@ export default function Welcome() {
             <Text style={[type.small, r === 'customer' ? styles.onAmberMuted : styles.muted]}>{t(hint)}</Text>
           </Pressable>
         ))}
+
+        {/* Developer tool for shooting the training set. Never present in a release build. */}
+        {__DEV__ && (
+          <Pressable accessibilityRole="button" onPress={() => router.push('/dataset')} style={styles.devLink}>
+            <Text style={[styles.devText]}>Dataset mode (developer)</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -117,4 +124,6 @@ const styles = StyleSheet.create({
   },
   roleCardPrimary: { backgroundColor: colors.worklightAmber },
   pressed: { opacity: 0.8 },
+  devLink: { minHeight: touch, justifyContent: 'center', marginTop: space.lg },
+  devText: { color: colors.onLensMuted, fontFamily: 'PlexMono-Regular', fontSize: 13 },
 });

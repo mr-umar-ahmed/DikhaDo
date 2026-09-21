@@ -20,12 +20,14 @@ Dataset layout - one folder per class, the folder name IS the routing:
 
 `other` matters: without it the model must call every photo *something*. The app ignores it.
 
-Outputs:  dikhado_cls.tflite  (uint8 in, uint8 out, ~1.5 MB)  and  dikhado_labels.json
-Then point MANIFEST in mobile/src/ai/model.ts at them with  outputIsLogits: false  (mean/std unused for uint8).
+Outputs:  dikhado_cls_int8.tflite (~1.2 MB), dikhado_cls_fp16.tflite (~2 MB) and dikhado_labels.json.
+Both are measured on the validation photos and the script says which one to ship.
+Then point MANIFEST in mobile/src/ai/model.ts at it with  mean: 0, std: 1, outputIsLogits: false.
 """
 import argparse
 import json
 import pathlib
+import tempfile
 
 import numpy as np
 import tensorflow as tf
@@ -60,12 +62,18 @@ def build(n_classes: int) -> tf.keras.Model:
     )
     base.trainable = False
 
+    head = tf.keras.layers.Dense(n_classes, activation="softmax")  # softmax in the graph: the app reads probabilities
+
     inputs = tf.keras.Input((SIZE, SIZE, 3))
     x = augment(inputs)
     x = base(x, training=False)
     x = tf.keras.layers.Dropout(0.3)(x)
-    outputs = tf.keras.layers.Dense(n_classes, activation="softmax")(x)  # softmax in the graph: the app reads probabilities
-    return tf.keras.Model(inputs, outputs), base
+    trainer = tf.keras.Model(inputs, head(x))
+
+    # What ships: the same weights with no augmentation and no dropout in the graph.
+    clean = tf.keras.Input((SIZE, SIZE, 3))
+    shipped = tf.keras.Model(clean, head(base(clean, training=False)))
+    return trainer, shipped, base
 
 
 def main() -> None:
@@ -91,7 +99,7 @@ def main() -> None:
 
     train = train.prefetch(tf.data.AUTOTUNE)
     val = val.prefetch(tf.data.AUTOTUNE)
-    model, base = build(len(classes))
+    model, shipped, base = build(len(classes))
     stop = tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=4, restore_best_weights=True)
 
     # 1) train the new head on frozen ImageNet features
@@ -117,38 +125,57 @@ def main() -> None:
         print(f"  {c:28s} {(y_pred[mask] == i).mean() if mask.any() else float('nan'):.2f}  (n={mask.sum()})")
 
     # Full-integer quantisation, calibrated on real training photos (without augmentation).
-    export = tf.keras.Model(model.input, model.output)
-
     def representative():
         for images, _ in train.unbatch().batch(1).take(200):
             yield [tf.cast(images, tf.float32)]
 
-    conv = tf.lite.TFLiteConverter.from_keras_model(export)
-    conv.optimizations = [tf.lite.Optimize.DEFAULT]
-    conv.representative_dataset = representative
-    conv.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    conv.inference_input_type = tf.uint8
-    conv.inference_output_type = tf.uint8
-    blob = conv.convert()
+    # Keras 3 (TF 2.16+) breaks TFLiteConverter.from_keras_model; go through a SavedModel instead.
+    saved = tempfile.mkdtemp(prefix="dikhado_saved_")
+    shipped.export(saved)
+
+    def convert(kind: str) -> bytes:
+        conv = tf.lite.TFLiteConverter.from_saved_model(saved)
+        conv.optimizations = [tf.lite.Optimize.DEFAULT]
+        if kind == "int8":  # smallest and fastest; uint8 in, uint8 out
+            conv.representative_dataset = representative
+            conv.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+            conv.inference_input_type = tf.uint8
+            conv.inference_output_type = tf.uint8
+        else:  # float16 weights; float32 in (raw 0-255), float32 probabilities out
+            conv.target_spec.supported_types = [tf.float16]
+        return conv.convert()
+
+    def accuracy(blob: bytes) -> tuple[float, int]:
+        interp = tf.lite.Interpreter(model_content=blob)
+        interp.allocate_tensors()
+        inp, out = interp.get_input_details()[0], interp.get_output_details()[0]
+        hits = n = 0
+        for images, labels_batch in val.unbatch().batch(1).take(400):
+            interp.set_tensor(inp["index"], tf.cast(images, inp["dtype"]).numpy())
+            interp.invoke()
+            hits += int(np.argmax(interp.get_tensor(out["index"])[0]) == int(labels_batch.numpy()[0]))
+            n += 1
+        return hits / max(n, 1), n
 
     args.out.mkdir(parents=True, exist_ok=True)
-    (args.out / "dikhado_cls.tflite").write_bytes(blob)
     # "dikhado:<category>[/<problem>]" - the app routes on these directly (src/ai/labelMap.ts).
     labels = ["dikhado:" + c.replace("__", "/") for c in classes]
     (args.out / "dikhado_labels.json").write_text(json.dumps(labels))
-    print(f"\nwrote {len(blob) / 1e6:.2f} MB model and {len(labels)} labels to {args.out}")
 
-    # The quantised model is what ships: check it, not just the float one.
-    interp = tf.lite.Interpreter(model_content=blob)
-    interp.allocate_tensors()
-    i_in, i_out = interp.get_input_details()[0]["index"], interp.get_output_details()[0]["index"]
-    hits = n = 0
-    for images, labels_batch in val.unbatch().batch(1).take(300):
-        interp.set_tensor(i_in, tf.cast(images, tf.uint8).numpy())
-        interp.invoke()
-        hits += int(np.argmax(interp.get_tensor(i_out)[0]) == int(labels_batch.numpy()[0]))
-        n += 1
-    print(f"INT8 validation accuracy: {hits / max(n, 1):.3f} on {n} images")
+    # MobileNetV3 (hard-swish, squeeze-excite) can lose real accuracy under full-integer quantisation.
+    # Export both, measure both on the validation photos, and let the numbers choose what ships.
+    results = {}
+    for kind in ("int8", "fp16"):
+        blob = convert(kind)
+        (args.out / f"dikhado_cls_{kind}.tflite").write_bytes(blob)
+        acc, n = accuracy(blob)
+        results[kind] = acc
+        print(f"{kind:5s} {len(blob) / 1e6:5.2f} MB   validation accuracy {acc:.3f} on {n} images")
+
+    pick = "int8" if results["int8"] >= results["fp16"] - 0.02 else "fp16"
+    print()
+    print(f"ship: dikhado_cls_{pick}.tflite  ({len(labels)} labels in dikhado_labels.json)")
+    print("MANIFEST in mobile/src/ai/model.ts ->  mean: 0, std: 1, outputIsLogits: false  (same for both files)")
 
 
 if __name__ == "__main__":

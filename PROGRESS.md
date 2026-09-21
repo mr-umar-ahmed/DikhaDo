@@ -26,7 +26,14 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 
 ---
 
-## Phase 3 — Local AI I: *See* (in progress)
+## Phase 3 — Local AI I: *See* ✅ (fine-tuned model awaits the dataset)
+
+**2026-09-21 · Dataset mode in the app + training pipeline verified** · _this commit_
+- **Dataset mode** (`src/app/dataset.tsx`, debug builds only, reachable from the first screen): class chips with live counts, one tap = one upright 640 px training photo saved to `<app documents>/dataset/<class>/`, counter towards 150 on the shutter itself. Tested on the Redmi: photos saved, ~25-40 KB each (≈ 50 MB for a full set).
+- `ml/pull_dataset.sh` copies the set to `ml/dataset/` over USB (`adb exec-out run-as … tar`) and prints per-class counts. Tested.
+- `ml/.venv` (Python 3.12, TensorFlow 2.16.2) created; **`train.py` run end to end on a synthetic 3-class set.** The run found and fixed a real bug (`TFLiteConverter.from_keras_model` crashes under Keras 3 → export a SavedModel first) and a real risk: full-integer quantisation dropped accuracy 1.00 → 0.67, float16 kept 1.00. The script now exports **both** (INT8 1.2 MB, FP16 1.9 MB), measures both on the validation photos and says which to ship. The shipped graph has no augmentation or dropout in it.
+- `ml/README.md` rewritten as the step-by-step: shoot in the app → pull → train → change `MANIFEST`.
+Waiting on: the photos (yours to shoot, ~2 hours of walking around).
 
 **2026-09-21 · Phase 3 physical gate: PASSED (user, Redmi Note 13 Pro+)**
 Airplane-mode snaps: switchboard, appliances and carpentry were all recognised correctly, no crashes, answers well under a second (72 ms inference). Tap / plumbing was not reported - to be re-checked once the fine-tuned model lands.

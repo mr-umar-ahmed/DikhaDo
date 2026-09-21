@@ -54,6 +54,36 @@ export async function takeShot(output: CameraPhotoOutput, size: number): Promise
   }
 }
 
+/**
+ * One training photo: upright, long side scaled to `maxSide`, written as a JPEG. Returns the temp path.
+ * Training runs at 224 px, so 640 px keeps detail for augmentation while 1,500 photos stay near 100 MB.
+ */
+export async function takeTrainingPhoto(output: CameraPhotoOutput, maxSide = 640): Promise<string> {
+  const held: NitroImage[] = [];
+  try {
+    const photo = await output.capturePhoto({ flashMode: 'off', enableShutterSound: false }, {});
+    let full: NitroImage;
+    try {
+      full = await photo.toImageAsync();
+      held.push(full);
+    } finally {
+      photo.dispose();
+    }
+    const scale = Math.min(1, maxSide / Math.max(full.width, full.height));
+    const small = scale < 1 ? await full.resizeAsync(Math.round(full.width * scale), Math.round(full.height * scale)) : full;
+    if (!held.includes(small)) held.push(small);
+    return await small.saveToTemporaryFileAsync('jpg', 88);
+  } finally {
+    held.forEach((img) => {
+      try {
+        img.dispose();
+      } catch {
+        // already released
+      }
+    });
+  }
+}
+
 /** Raw pixels arrive with 3 or 4 bytes per pixel in a platform-dependent channel order. Read the format; never assume it. */
 function toRgb(raw: RawPixelData, size: number): Uint8Array {
   if (raw.width !== size || raw.height !== size) throw new Error(`expected ${size}x${size}, got ${raw.width}x${raw.height}`);
