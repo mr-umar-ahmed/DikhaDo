@@ -50,7 +50,15 @@ const matchers = rules.map(([keywords, hit]) => ({
   tests: keywords.map((k) => new RegExp(`(^|[^a-z])${k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`)),
 }));
 
+/** Labels from the fine-tuned model (ml/train.py) carry their own routing: "dikhado:electrical/switchboard". */
+const OWN = 'dikhado:';
+
 export function hitForLabel(label: string): Hit | null {
+  if (label.startsWith(OWN)) {
+    const [category, problem] = label.slice(OWN.length).split('/');
+    // "other" is the class that lets the phone say it cannot tell.
+    return !category || category === 'other' ? null : { category, problem };
+  }
   const text = label.toLowerCase();
   for (const m of matchers) if (m.tests.some((t) => t.test(text))) return m.hit;
   return null;

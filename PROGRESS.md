@@ -29,6 +29,10 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 
 ## Phase 3 — Local AI I: *See* (in progress)
 
+**2026-09-21 · Training pipeline (`ml/`) + drop-in label routing** · _this commit_
+`ml/train.py` — MobileNetV3-Small transfer learning for self-shot photos: field-style augmentation, class weighting, head training then a low-rate fine-tune of the top 40 layers, **per-class** validation report, full-integer INT8 export (uint8 in/out, softmax in the graph), and an accuracy check of the quantised model that actually ships. Folder names are the routing (`electrical__switchboard` → `dikhado:electrical/switchboard`); an `other` class lets the phone say "I cannot tell". `ml/README.md` is the shooting guide. App side: `labelMap.ts` routes `dikhado:` labels directly, so the fine-tuned model is a `MANIFEST` change and nothing else; 24 unit checks green.
+**Not run yet** — needs the dataset (yours to shoot: 150+ photos per class) and Python 3.10–3.12 (this machine has 3.14, which TensorFlow does not support).
+
 **2026-09-21 · The lens: camera → on-device diagnosis, working on the phone** · _this commit_
 First end-to-end run on the Redmi Note 13 Pro+: shutter → upright photo → centre-crop → 224×224 RGB → MobileNetV3-Small on CPU → **72 ms** → paper sheet. Pointed at a wall socket, the stock ImageNet model was not confident and *said so* ("Is it this? Fan and appliances") instead of forcing an answer — the designed behaviour; sockets and switchboards are exactly what the fine-tuned model is for.
 - `src/ai/model.ts` — model loaded once, warmed on a blank frame behind the splash (the load doubles as the capability probe: failure ⇒ Simple mode), calls serialised, softmax over logits, supports float32 and uint8 models.

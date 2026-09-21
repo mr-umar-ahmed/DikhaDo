@@ -21,6 +21,10 @@ check('washbasin -> plumbing', hitForLabel('washbasin, handbasin, washbowl')?.ca
 check('word boundaries: "desktop computer" is not a desk', hitForLabel('desktop computer') === null);
 check('word boundaries: "gridiron" is not an iron', hitForLabel('gridiron') === null);
 check('an unrelated label maps to nothing', hitForLabel('golden retriever') === null);
+const own = hitForLabel('dikhado:electrical/switchboard');
+check('fine-tuned labels route directly', own?.category === 'electrical' && own?.problem === 'switchboard');
+check('fine-tuned label without a problem', hitForLabel('dikhado:carpentry')?.category === 'carpentry' && hitForLabel('dikhado:carpentry')?.problem === undefined);
+check('the fine-tuned "other" class maps to nothing', hitForLabel('dikhado:other') === null);
 
 const everyHit = ['electric fan', 'refrigerator', 'switch', 'washbasin', 'water tower', 'tractor', 'wardrobe', 'ashcan', 'broom', 'paintbrush']
   .map((l) => hitForLabel(l))
