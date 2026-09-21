@@ -3,7 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Linking, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
+import { isUrgent } from '@/ai/safety';
 import { byCode } from '@/data/catalog';
+import { clearDraft, peekDraft } from '@/lib/draft';
+import { attachMedia } from '@/lib/media';
 import { currentPoint, LocationDenied, LocationUnavailable } from '@/lib/location';
 import { usePrefs } from '@/lib/prefs';
 import { createJob, forgetCustomer, IdentityGone, newClientId, openJobId, registerCustomer, savedCustomer, type Customer } from '@/lib/requests';
@@ -52,7 +55,14 @@ export default function RequestJob() {
         setCustomer(me); // so a retry does not register a second profile
       }
       const at = await currentPoint();
-      const job = await createJob({ clientId: clientId.current, customerId: me.profileId, workerId: worker, category: category.code, lat: at.lat, lng: at.lng });
+      const draft = peekDraft();
+      const job = await createJob({
+        clientId: clientId.current, customerId: me.profileId, workerId: worker, category: category.code, lat: at.lat, lng: at.lng,
+        transcript: draft.transcript, visionConf: draft.visionConf, urgent: isUrgent(category.code),
+      });
+      // Text first: the worker already has the job. Photo and voice follow, and retry on their own.
+      attachMedia(job.id, { photoUri: draft.photoUri, voiceUri: draft.voiceUri });
+      clearDraft();
       router.replace({ pathname: '/job/[id]', params: { id: job.id } });
     } catch (e) {
       if (e instanceof IdentityGone) {
@@ -83,6 +93,8 @@ export default function RequestJob() {
         <Row label={t('usualPrice')} value={`₹${category.price[0]}–${category.price[1]}`} />
         <Row label={t('workerLabel')} value={name} last />
       </View>
+      {peekDraft().photoUri && <Text style={[type.small, { color: colors.onPaperMuted }]}>{t('photoAttached')}</Text>}
+      {peekDraft().voiceUri && <Text style={[type.small, { color: colors.onPaperMuted }]}>{t('voiceAttached')}</Text>}
 
       {!customer && (
         <View style={{ gap: space.sm }}>

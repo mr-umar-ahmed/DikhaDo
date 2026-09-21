@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DikhaDo Console</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+  <link href="console.css" rel="stylesheet">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>DikhaDo Console</h1>
+      <p class="muted">Jobs, workers and panchayat reports, live from the field</p>
+    </div>
+    <div class="top-right">
+      <span id="conn" class="stamp stamp-muted">connecting</span>
+      <span id="clock" class="mono"></span>
+    </div>
+  </header>
+
+  <section class="stats" id="stats" aria-label="Today"></section>
+
+  <main class="grid">
+    <section class="panel map-panel">
+      <div class="panel-head">
+        <h2>Field map</h2>
+        <div class="legend">
+          <span><i class="dot dot-green"></i>worker on duty</span>
+          <span><i class="dot dot-amber"></i>job in progress</span>
+          <span><i class="dot dot-indigo"></i>panchayat report</span>
+          <span><i class="dot dot-red"></i>past its deadline</span>
+        </div>
+      </div>
+      <div id="map"></div>
+    </section>
+
+    <section class="panel">
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="jobs" aria-selected="true">Jobs <span id="n-jobs" class="count"></span></button>
+        <button role="tab" data-tab="verify" aria-selected="false">Verification <span id="n-verify" class="count"></span></button>
+        <button role="tab" data-tab="workers" aria-selected="false">Workers <span id="n-workers" class="count"></span></button>
+        <button role="tab" data-tab="civic" aria-selected="false">Panchayat reports <span id="n-civic" class="count"></span></button>
+      </nav>
+      <div id="tab-jobs" class="tab"></div>
+      <div id="tab-verify" class="tab" hidden></div>
+      <div id="tab-workers" class="tab" hidden></div>
+      <div id="tab-civic" class="tab" hidden></div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="console.js"></script>
+</body>
+</html>

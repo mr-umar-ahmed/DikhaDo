@@ -13,6 +13,8 @@ import { classify, INPUT_SIZE } from '@/ai/model';
 import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { DiagnosisSheet, type Destination } from '@/components/DiagnosisSheet';
 import { Notice } from '@/components/paper';
+import { SpeakToFind } from '@/components/SpeakToFind';
+import { clearDraft, setDraft } from '@/lib/draft';
 import { usePrefs } from '@/lib/prefs';
 import { bookingCount, openJobId } from '@/lib/requests';
 import { colors, radius, space, touch } from '@/theme/tokens';
@@ -61,6 +63,7 @@ export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
 
   const retake = useCallback(() => {
     tuck.value = 0;
+    clearDraft();
     setShot(null);
     setDiagnosis(null);
     setStage('camera');
@@ -96,7 +99,9 @@ export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
 
   const judge = useCallback(
     async (s: Shot, skipQualityGate: boolean) => {
-      setDiagnosis(await diagnose(s.rgb, INPUT_SIZE, classify, { skipQualityGate }));
+      const d = await diagnose(s.rgb, INPUT_SIZE, classify, { skipQualityGate });
+      setDraft({ photoUri: s.uri, visionConf: d.kind === 'sure' ? d.best.confidence : undefined });
+      setDiagnosis(d);
       setStage('sheet');
       tuck.value = withTiming(1, { duration: TUCK_MS, easing: Easing.out(Easing.cubic) });
     },
@@ -182,6 +187,13 @@ export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
         >
           <View style={styles.shutterCore} />
         </Pressable>
+        {stage === 'camera' && (
+          <SpeakToFind
+            tone="lens"
+            onGo={(code) => router.push({ pathname: '/workers/[code]', params: { code } })}
+            onGrid={() => onGrid(false)}
+          />
+        )}
         <Pressable accessibilityRole="button" onPress={() => onGrid(true)} style={styles.linkButton}>
           <Text style={[type.label, styles.onLens]}>{t('useGrid')}</Text>
         </Pressable>

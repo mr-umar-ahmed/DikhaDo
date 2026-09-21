@@ -19,7 +19,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "experiments": {
@@ -43,7 +44,10 @@
           "locationWhenInUsePermission": "DikhaDo uses your location to find workers near you."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-speech-recognition",
+      "expo-audio",
+      "expo-sharing"
     ]
   }
 }

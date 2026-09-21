@@ -21,6 +21,10 @@ export type Job = {
   lng: number | null;
   price_agreed: number | null;
   pay_method: 'cash' | 'upi' | null;
+  photo_url: string | null;
+  voice_url: string | null;
+  transcript?: string | null;
+  urgent?: boolean;
   created_at: string;
   updated_at: string;
   worker: Party | null;
@@ -69,19 +73,25 @@ export async function registerCustomer(name: string, phone: string, lang: Lang):
 }
 
 // ── Job lifecycle ────────────────────────────────────────────────────────────
-export async function createJob(input: { clientId: string; customerId: string; workerId: string; category: string; lat: number; lng: number }): Promise<Job> {
-  const { data, error } = await db()
-    .from('requests')
-    .insert({
-      client_id: input.clientId,
-      customer_id: input.customerId,
-      worker_id: input.workerId,
-      category_code: input.category,
-      lat: input.lat,
-      lng: input.lng,
-    })
-    .select(JOB_SELECT)
-    .single();
+export async function createJob(input: {
+  clientId: string; customerId: string; workerId: string; category: string; lat: number; lng: number;
+  transcript?: string; urgent?: boolean; visionConf?: number;
+}): Promise<Job> {
+  const base = {
+    client_id: input.clientId,
+    customer_id: input.customerId,
+    worker_id: input.workerId,
+    category_code: input.category,
+    lat: input.lat,
+    lng: input.lng,
+    vision_conf: input.visionConf ?? null,
+  };
+  const extra = { transcript: input.transcript ?? null, urgent: input.urgent ?? false };
+  let { data, error } = await db().from('requests').insert({ ...base, ...extra }).select(JOB_SELECT).single();
+  // A database that has not had migration 0004 yet must still take the booking.
+  if (error && (error.code === 'PGRST204' || error.code === '42703')) {
+    ({ data, error } = await db().from('requests').insert(base).select(JOB_SELECT).single());
+  }
 
   let job = data as Job | null;
   if (error?.code === '23505') {

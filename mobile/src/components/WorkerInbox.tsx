@@ -1,7 +1,9 @@
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useAudioPlayer } from 'expo-audio';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Notice, PrimaryButton } from '@/components/paper';
 import { byCode } from '@/data/catalog';
 import { currentPoint, formatDistance, type Point } from '@/lib/location';
@@ -78,11 +80,34 @@ function JobCard({ job, me, onChanged }: { job: Job; me: Point | null; onChanged
 
   return (
     <View style={[styles.card, isNew && styles.cardNew, job.status === 'paid' && styles.cardPaid]}>
-      <Text style={[serialStyle, { color: colors.onPaperMuted }]}>{job.serial}</Text>
+      <View style={styles.cardTop}>
+        <Text style={[serialStyle, { color: colors.onPaperMuted, flex: 1 }]}>{job.serial}</Text>
+        {job.urgent && (
+          <View style={styles.urgent}>
+            <Text style={[type.small, { color: colors.registerRed }]}>{t('urgentJob')}</Text>
+          </View>
+        )}
+      </View>
       <Text style={[type.headline, { color: colors.onPaper }]}>{category?.name[lang] ?? job.category_code}</Text>
       <Text style={[type.body, { color: colors.onPaperMuted }]}>
         {[job.customer?.name, away, category && `${t('usualPrice')} ₹${category.price[0]}–${category.price[1]}`].filter(Boolean).join('\n')}
       </Text>
+
+      {/* What the customer showed and said: the worker knows what to bring before leaving home. */}
+      {(job.photo_url || job.transcript || job.voice_url) && (
+        <View style={styles.evidence}>
+          {job.photo_url && <Image source={{ uri: job.photo_url }} style={styles.photo} accessibilityIgnoresInvertColors />}
+          <View style={{ flex: 1, gap: space.xs }}>
+            {!!job.transcript && (
+              <>
+                <Text style={[type.small, { color: colors.onPaperMuted }]}>{t('customerSaid')}</Text>
+                <Text style={[type.body, { color: colors.onPaper }]}>{job.transcript}</Text>
+              </>
+            )}
+            {job.voice_url && <VoiceNote uri={job.voice_url} />}
+          </View>
+        </View>
+      )}
 
       {trouble === 'failed' && <Notice tone="warn" title={t('actionFailed')} />}
       {trouble === 'moved' && <Notice title={t('alreadyMoved')} />}
@@ -123,7 +148,28 @@ function JobCard({ job, me, onChanged }: { job: Job; me: Point | null; onChanged
   );
 }
 
+function VoiceNote({ uri }: { uri: string }) {
+  const { lang } = usePrefs();
+  const { t } = useTranslation();
+  const player = useAudioPlayer({ uri });
+  const play = () => {
+    player.seekTo(0);
+    player.play();
+  };
+  return (
+    <Pressable accessibilityRole="button" onPress={play} style={({ pressed }) => [styles.voice, pressed && { opacity: 0.7 }]}>
+      <MaterialCommunityIcons name="play-circle" size={26} color={colors.onPaper} />
+      <Text style={[typeScale(lang).label, { color: colors.onPaper }]}>{t('playVoice')}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  cardTop: { flexDirection: 'row', alignItems: 'center' },
+  urgent: { borderWidth: 1.5, borderColor: colors.registerRed, paddingHorizontal: 8, paddingVertical: 2 },
+  evidence: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
+  photo: { width: 96, height: 96, borderRadius: radius.sm, backgroundColor: colors.lensInk },
+  voice: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: touch },
   card: { gap: space.sm, borderWidth: 1, borderColor: colors.paperRule, borderRadius: radius.md, backgroundColor: colors.paperRaised, padding: space.md },
   cardNew: { borderWidth: 2, borderColor: colors.worklightAmber },
   cardPaid: { borderWidth: 2, borderColor: colors.stampGreen },

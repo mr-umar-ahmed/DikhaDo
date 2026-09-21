@@ -150,6 +150,23 @@ const en = {
   safety_electrical: 'Switch off the main switch. Do not touch bare wires. Keep children away.',
   safety_pump: 'Switch off the power to the motor before anyone touches it.',
   safety_geyser: 'Switch off the geyser and its power before anyone touches it.',
+
+  holdToSpeak: 'Hold and say what is broken',
+  listening: 'Listening',
+  youSaid: 'You said',
+  sayAgain: 'Say it again',
+  voiceSaved: 'Your voice note is saved for the worker',
+  heardNothing: 'Nothing was heard. Hold the button while you speak.',
+  speechMissingTitle: 'This phone cannot understand {{language}} speech yet',
+  speechMissingBody: 'Your voice note is saved for the worker. Choose what is broken from the pictures.',
+  downloadSpeech: 'Download {{language}} speech (needs internet once)',
+  micBlockedTitle: 'DikhaDo cannot use the microphone',
+  micBlockedBody: 'Allow the microphone in settings, or choose what is broken from the pictures.',
+  customerSaid: 'Customer said',
+  playVoice: 'Play the voice note',
+  urgentJob: 'Urgent',
+  photoAttached: 'Your photo goes to the worker',
+  voiceAttached: 'Your voice note goes to the worker',
 };
 
 export type Strings = typeof en;
@@ -302,6 +319,23 @@ const hi: Strings = {
   safety_electrical: 'मेन स्विच बंद कर दीजिए। खुले तार मत छुइए। बच्चों को दूर रखिए।',
   safety_pump: 'किसी के छूने से पहले मोटर की बिजली बंद कर दीजिए।',
   safety_geyser: 'किसी के छूने से पहले गीज़र और उसकी बिजली बंद कर दीजिए।',
+
+  holdToSpeak: 'दबाकर रखिए और बताइए क्या खराब है',
+  listening: 'सुन रहे हैं',
+  youSaid: 'आपने कहा',
+  sayAgain: 'फिर से बोलिए',
+  voiceSaved: 'आपका वॉइस नोट कारीगर के लिए सहेज लिया गया है',
+  heardNothing: 'कुछ सुनाई नहीं दिया। बोलते समय बटन दबाकर रखिए।',
+  speechMissingTitle: 'यह फ़ोन अभी {{language}} बोली नहीं समझ पाता',
+  speechMissingBody: 'आपका वॉइस नोट कारीगर के लिए सहेज लिया गया है। तस्वीरों में से चुनिए कि क्या खराब है।',
+  downloadSpeech: '{{language}} बोली डाउनलोड करें (एक बार इंटरनेट चाहिए)',
+  micBlockedTitle: 'DikhaDo माइक्रोफ़ोन इस्तेमाल नहीं कर पा रहा',
+  micBlockedBody: 'सेटिंग में माइक्रोफ़ोन की अनुमति दीजिए, या तस्वीरों में से चुनिए कि क्या खराब है।',
+  customerSaid: 'ग्राहक ने कहा',
+  playVoice: 'वॉइस नोट सुनिए',
+  urgentJob: 'ज़रूरी',
+  photoAttached: 'आपकी फ़ोटो कारीगर को भेजी जाएगी',
+  voiceAttached: 'आपका वॉइस नोट कारीगर को भेजा जाएगा',
 };
 
 const te: Strings = {
@@ -452,6 +486,23 @@ const te: Strings = {
   safety_electrical: 'మెయిన్ స్విచ్ ఆఫ్ చేయండి. తెరిచి ఉన్న వైర్లను తాకవద్దు. పిల్లలను దూరంగా ఉంచండి.',
   safety_pump: 'ఎవరైనా తాకే ముందు మోటార్ కరెంట్ ఆఫ్ చేయండి.',
   safety_geyser: 'ఎవరైనా తాకే ముందు గీజర్‌ను, దాని కరెంట్‌ను ఆఫ్ చేయండి.',
+
+  holdToSpeak: 'నొక్కి పట్టుకుని ఏది పాడైందో చెప్పండి',
+  listening: 'వింటున్నాం',
+  youSaid: 'మీరు చెప్పింది',
+  sayAgain: 'మళ్లీ చెప్పండి',
+  voiceSaved: 'మీ వాయిస్ నోట్ పనివారి కోసం సేవ్ అయింది',
+  heardNothing: 'ఏమీ వినిపించలేదు. మాట్లాడేటప్పుడు బటన్ నొక్కి పట్టుకోండి.',
+  speechMissingTitle: 'ఈ ఫోన్ ఇంకా {{language}} మాటలను అర్థం చేసుకోలేదు',
+  speechMissingBody: 'మీ వాయిస్ నోట్ పనివారి కోసం సేవ్ అయింది. ఏది పాడైందో బొమ్మల నుండి ఎంచుకోండి.',
+  downloadSpeech: '{{language}} స్పీచ్ డౌన్‌లోడ్ చేయండి (ఒకసారి ఇంటర్నెట్ కావాలి)',
+  micBlockedTitle: 'DikhaDo మైక్రోఫోన్‌ను వాడలేకపోతోంది',
+  micBlockedBody: 'సెట్టింగ్స్‌లో మైక్రోఫోన్‌కు అనుమతి ఇవ్వండి, లేదా ఏది పాడైందో బొమ్మల నుండి ఎంచుకోండి.',
+  customerSaid: 'కస్టమర్ చెప్పింది',
+  playVoice: 'వాయిస్ నోట్ వినండి',
+  urgentJob: 'అత్యవసరం',
+  photoAttached: 'మీ ఫోటో పనివారికి వెళ్తుంది',
+  voiceAttached: 'మీ వాయిస్ నోట్ పనివారికి వెళ్తుంది',
 };
 
 export const resources = {

@@ -5,6 +5,7 @@ import { StyleSheet, View } from 'react-native';
 import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { CategoryTile } from '@/components/CategoryTile';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
+import { SpeakToFind } from '@/components/SpeakToFind';
 import { openJobId } from '@/lib/requests';
 import { childrenOf, topLevel } from '@/data/catalog';
 import { space } from '@/theme/tokens';
@@ -32,6 +33,9 @@ export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
         <Notice title={t('yourActiveJob')} action={t('openJob')} onAction={() => router.push({ pathname: '/job/[id]', params: { id: activeJob } })} />
       )}
       {onCamera && <PrimaryButton label={t('useCamera')} icon="camera" tone="ink" onPress={onCamera} />}
+      <View style={{ alignItems: 'center', gap: 8 }}>
+        <SpeakToFind tone="paper" onGo={(code) => router.push({ pathname: '/workers/[code]', params: { code } })} />
+      </View>
       <View style={styles.grid}>
         {topLevel.map((c) => (
           <CategoryTile

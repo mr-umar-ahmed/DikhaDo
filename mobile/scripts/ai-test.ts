@@ -1,6 +1,7 @@
 // Unit checks for the pure parts of the local AI layer. No phone, no model, no network.
 //   cd mobile && npx tsx scripts/ai-test.ts
 import { diagnose, type Classify } from '../src/ai/diagnose';
+import { matchIntent } from '../src/ai/intent';
 import { hitForLabel, scoreCategories } from '../src/ai/labelMap';
 import { assessQuality } from '../src/ai/quality';
 import { safetyFor } from '../src/ai/safety';
@@ -50,6 +51,21 @@ const labels = ['background', 'washer, automatic washer', 'dishwasher', 'golden 
 const folded = scoreCategories(labels, [0, 0.3, 0.25, 0.4, 0.05]);
 check('related labels add up: washer 0.30 + dishwasher 0.25 = appliance 0.55', folded[0]?.category === 'appliance' && Math.abs(folded[0].confidence - 0.55) < 1e-6, JSON.stringify(folded[0]));
 check('the dog is ignored even though it scored highest', !folded.some((f) => f.category === 'golden retriever'));
+
+// ── speech intent: what people actually say, in the scripts recognisers actually return ──
+for (const [said, want] of [
+  ['fan kharab hai', 'fan_dead'], ['पंखा नहीं चल रहा है', 'fan_dead'], ['ఫ్యాన్ తిరగడం లేదు', 'fan_dead'],
+  ['nal se pani tapak raha hai', 'tap_leak'], ['नल से पानी टपक रहा है', 'tap_leak'], ['కుళాయి లీక్ అవుతోంది', 'tap_leak'],
+  ['motor start nahi ho rahi', 'pump_dead'], ['మోటార్ స్టార్ట్ కావడం లేదు', 'pump_dead'], ['बोरवेल की मोटर', 'borewell'],
+  ['switch board se chingari aa rahi hai', 'wiring_fault'], ['స్విచ్ పనిచేయడం లేదు', 'switchboard'],
+  ['water heater not working', 'geyser_install'], ['kachra uthana hai', 'bulk_waste'], ['చెత్త తీసుకెళ్లాలి', 'bulk_waste'],
+  ['my laptop is slow', null], ['bike puncture ho gaya', 'mechanic'], ['दरवाज़ा टूट गया', 'carpentry'], ['', null],
+] as const) {
+  const got = matchIntent(said)?.code ?? null;
+  check(`"${said}" -> ${want}`, got === want, String(got));
+}
+const intentCodes = ['fan_dead','cooler_fridge','geyser_install','wiring_fault','switchboard','inverter','tap_leak','tank_overflow','borewell','pump_dead','bulk_waste','mechanic','carpentry','mason','farm','cleaning','appliance','electrical','plumbing'];
+check('every intent code exists in the catalog', intentCodes.every((c) => !!byCode(c)), intentCodes.filter((c) => !byCode(c)).join(','));
 
 // ── quality gate ─────────────────────────────────────────────────────────────
 const S = 224;
