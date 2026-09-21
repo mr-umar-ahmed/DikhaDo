@@ -6,6 +6,7 @@ import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { CategoryTile } from '@/components/CategoryTile';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
 import { SpeakToFind } from '@/components/SpeakToFind';
+import { queued } from '@/lib/outbox';
 import { openJobId } from '@/lib/requests';
 import { childrenOf, topLevel } from '@/data/catalog';
 import { space } from '@/theme/tokens';
@@ -15,12 +16,14 @@ export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
   const { t } = useTranslation();
   const router = useRouter();
   const [activeJob, setActiveJob] = useState<string | null>(null);
+  const [waiting, setWaiting] = useState<string | null>(null);
 
   // Coming back to the home screen must never lose a job in progress.
   useFocusEffect(
     useCallback(() => {
       let alive = true;
       openJobId().then((id) => alive && setActiveJob(id));
+      queued().then((list) => alive && setWaiting(list[0]?.clientId ?? null));
       return () => {
         alive = false;
       };
@@ -29,6 +32,7 @@ export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
 
   return (
     <PaperScreen title={t('whatIsBroken')} subtitle={t('pickHint')} back={false}>
+      {waiting && <Notice title={t('queuedPill')} action={t('openJob')} onAction={() => router.push({ pathname: '/queued', params: { clientId: waiting } })} />}
       {activeJob && (
         <Notice title={t('yourActiveJob')} action={t('openJob')} onAction={() => router.push({ pathname: '/job/[id]', params: { id: activeJob } })} />
       )}

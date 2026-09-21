@@ -167,6 +167,10 @@ const en = {
   urgentJob: 'Urgent',
   photoAttached: 'Your photo goes to the worker',
   voiceAttached: 'Your voice note goes to the worker',
+
+  queuedTitle: 'Waiting for signal',
+  queuedBody: 'Your request is saved on this phone. It sends by itself the moment you get a connection. You do not need to keep this screen open.',
+  queuedPill: 'A request is waiting for signal',
 };
 
 export type Strings = typeof en;
@@ -336,6 +340,10 @@ const hi: Strings = {
   urgentJob: 'ज़रूरी',
   photoAttached: 'आपकी फ़ोटो कारीगर को भेजी जाएगी',
   voiceAttached: 'आपका वॉइस नोट कारीगर को भेजा जाएगा',
+
+  queuedTitle: 'नेटवर्क का इंतज़ार',
+  queuedBody: 'आपका अनुरोध इस फ़ोन में सहेज लिया गया है। नेटवर्क आते ही यह अपने आप चला जाएगा। यह स्क्रीन खुली रखना ज़रूरी नहीं।',
+  queuedPill: 'एक अनुरोध नेटवर्क का इंतज़ार कर रहा है',
 };
 
 const te: Strings = {
@@ -503,6 +511,10 @@ const te: Strings = {
   urgentJob: 'అత్యవసరం',
   photoAttached: 'మీ ఫోటో పనివారికి వెళ్తుంది',
   voiceAttached: 'మీ వాయిస్ నోట్ పనివారికి వెళ్తుంది',
+
+  queuedTitle: 'సిగ్నల్ కోసం ఎదురుచూస్తోంది',
+  queuedBody: 'మీ అభ్యర్థన ఈ ఫోన్‌లో సేవ్ అయింది. సిగ్నల్ రాగానే దానంతటదే వెళ్తుంది. ఈ స్క్రీన్ తెరిచి ఉంచాల్సిన అవసరం లేదు.',
+  queuedPill: 'ఒక అభ్యర్థన సిగ్నల్ కోసం ఎదురుచూస్తోంది',
 };
 
 export const resources = {

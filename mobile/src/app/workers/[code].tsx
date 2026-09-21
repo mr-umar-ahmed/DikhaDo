@@ -124,7 +124,7 @@ function WorkerCard({ worker: w, problem, code }: { worker: NearbyWorker; proble
 
       <PrimaryButton
         label={t('request', { name: w.name.split(' ')[0] })}
-        onPress={() => router.push({ pathname: '/request', params: { worker: w.profile_id, name: w.name, code } })}
+        onPress={() => router.push({ pathname: '/request', params: { worker: w.profile_id, name: w.name, code, phone: w.phone ?? '' } })}
       />
       <View style={styles.actions}>
         <Pressable accessibilityRole="button" onPress={() => open(`tel:${w.phone}`)} style={({ pressed }) => [styles.action, styles.callAction, pressed && { opacity: 0.75 }]}>

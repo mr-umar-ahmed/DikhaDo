@@ -16,6 +16,7 @@ import { Notice } from '@/components/paper';
 import { SpeakToFind } from '@/components/SpeakToFind';
 import { clearDraft, setDraft } from '@/lib/draft';
 import { usePrefs } from '@/lib/prefs';
+import { queued } from '@/lib/outbox';
 import { bookingCount, openJobId } from '@/lib/requests';
 import { colors, radius, space, touch } from '@/theme/tokens';
 import { typeScale } from '@/theme/type';
@@ -49,6 +50,7 @@ export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
   const [diagnosis, setDiagnosis] = useState<Diagnosis | null>(null);
   const [trouble, setTrouble] = useState<'camera' | 'shot' | null>(null);
   const [activeJob, setActiveJob] = useState<string | null>(null);
+  const [waiting, setWaiting] = useState<string | null>(null);
 
   const tuck = useSharedValue(0);
   const frameStyle = useAnimatedStyle(() => ({
@@ -76,6 +78,7 @@ export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
     useCallback(() => {
       let alive = true;
       openJobId().then((id) => alive && setActiveJob(id));
+      queued().then((list) => alive && setWaiting(list[0]?.clientId ?? null));
       if (bookingCount() !== bookingsSeen.current) {
         bookingsSeen.current = bookingCount();
         retake();
@@ -166,6 +169,11 @@ export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
       </View>
 
       <View style={[styles.controls, { paddingBottom: insets.bottom + space.md }]}>
+        {waiting && (
+          <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/queued', params: { clientId: waiting } })} style={({ pressed }) => [styles.jobPill, pressed && styles.pressed]}>
+            <Text style={[type.label, styles.onAmber]}>{t('queuedPill')}</Text>
+          </Pressable>
+        )}
         {activeJob && (
           <Pressable accessibilityRole="button" onPress={openJob} style={({ pressed }) => [styles.jobPill, pressed && styles.pressed]}>
             <Text style={[type.label, styles.onAmber]}>{t('yourActiveJob')}</Text>

@@ -1,0 +1,12 @@
+127.0.0.1 - - [21/Sep/2026 22:44:43] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Sep/2026 22:44:43] "GET /console.css HTTP/1.1" 200 -
+127.0.0.1 - - [21/Sep/2026 22:44:44] "GET /config.js HTTP/1.1" 200 -
+127.0.0.1 - - [21/Sep/2026 22:44:44] "GET /console.js HTTP/1.1" 200 -
+127.0.0.1 - - [21/Sep/2026 22:44:48] code 404, message File not found
+127.0.0.1 - - [21/Sep/2026 22:44:48] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [21/Sep/2026 22:45:21] "GET / HTTP/1.1" 304 -
+127.0.0.1 - - [21/Sep/2026 22:45:21] "GET /console.css HTTP/1.1" 304 -
+127.0.0.1 - - [21/Sep/2026 22:45:21] "GET /config.js HTTP/1.1" 304 -
+127.0.0.1 - - [21/Sep/2026 22:45:21] "GET /console.js HTTP/1.1" 200 -
+127.0.0.1 - - [21/Sep/2026 22:45:21] code 404, message File not found
+127.0.0.1 - - [21/Sep/2026 22:45:21] "GET /favicon.ico HTTP/1.1" 404 -

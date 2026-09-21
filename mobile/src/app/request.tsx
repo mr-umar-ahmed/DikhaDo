@@ -7,6 +7,7 @@ import { isUrgent } from '@/ai/safety';
 import { byCode } from '@/data/catalog';
 import { clearDraft, peekDraft } from '@/lib/draft';
 import { attachMedia } from '@/lib/media';
+import { enqueue } from '@/lib/outbox';
 import { currentPoint, LocationDenied, LocationUnavailable } from '@/lib/location';
 import { usePrefs } from '@/lib/prefs';
 import { createJob, forgetCustomer, IdentityGone, newClientId, openJobId, registerCustomer, savedCustomer, type Customer } from '@/lib/requests';
@@ -17,7 +18,7 @@ type Problem = 'invalid' | 'location-blocked' | 'location-off' | 'backend' | nul
 
 /** Confirm one job to one worker. Asks who the customer is only the first time. */
 export default function RequestJob() {
-  const { worker, name, code } = useLocalSearchParams<{ worker: string; name: string; code: string }>();
+  const { worker, name, code, phone } = useLocalSearchParams<{ worker: string; name: string; code: string; phone?: string }>();
   const { lang } = usePrefs();
   const { t } = useTranslation();
   const router = useRouter();
@@ -48,6 +49,8 @@ export default function RequestJob() {
     const digits = myPhone.replace(/\D/g, '').slice(-10);
     if (!customer && (myName.trim().length < 2 || digits.length !== 10)) return setProblem('invalid');
     setBusy(true);
+    const draft0 = peekDraft();
+    let at0: { lat: number; lng: number } | null = null;
     try {
       let me = customer;
       if (!me) {
@@ -55,6 +58,7 @@ export default function RequestJob() {
         setCustomer(me); // so a retry does not register a second profile
       }
       const at = await currentPoint();
+      at0 = at;
       const draft = peekDraft();
       const job = await createJob({
         clientId: clientId.current, customerId: me.profileId, workerId: worker, category: category.code, lat: at.lat, lng: at.lng,
@@ -72,7 +76,23 @@ export default function RequestJob() {
         setProblem('invalid');
       } else if (e instanceof LocationDenied) setProblem(e.canAskAgain ? 'location-off' : 'location-blocked');
       else if (e instanceof LocationUnavailable) setProblem('location-off');
-      else setProblem('backend');
+      else {
+        // No signal is not a failure here: keep the booking on the phone and send it when a connection appears.
+        try {
+          const at = at0 ?? (await currentPoint());
+          await enqueue({
+            clientId: clientId.current, workerId: worker, workerName: name, workerPhone: phone || undefined, category: category.code,
+            lat: at.lat, lng: at.lng, transcript: draft0.transcript, urgent: isUrgent(category.code), visionConf: draft0.visionConf,
+            photoUri: draft0.photoUri, voiceUri: draft0.voiceUri,
+            newCustomer: customer ? undefined : { name: myName.trim(), phone: `+91${digits}`, lang },
+            queuedAt: Date.now(),
+          });
+          clearDraft();
+          return router.replace({ pathname: '/queued', params: { clientId: clientId.current } });
+        } catch {
+          setProblem('backend');
+        }
+      }
       setBusy(false);
     }
   };

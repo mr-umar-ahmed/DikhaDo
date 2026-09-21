@@ -10,9 +10,9 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 | 1 | Directory spine: picker → on-duty workers → call / WhatsApp | ✅ done | passed on phone |
 | 2 | Job lifecycle: request → accept → track → pay → rate | ✅ done, reviewed, hardened | one-phone loop passed · two-phone < 60 s timing **open** |
 | 3 | Local AI I — *See*: camera, on-device classifier, quality gate, safety card | ✅ done (72 ms on device) · fine-tuned model awaits the dataset | **passed** on phone, airplane mode |
-| 4 | Local AI II — *Hear*: on-device speech → category; photo + voice on the job | ⏳ | — |
-| 5 | Trust + Department Console | ⏳ | — |
-| 6 | One-bar resilience + Sahayak mode | ⏳ | — |
+| 4 | Local AI II — *Hear*: on-device speech → category; photo + voice on the job | ✅ built, speech engine verified on phone | spoken-phrase test + media upload need migration 0004 |
+| 5 | Trust + Department Console | 🔨 console done and verified; in-app ID upload next | — |
+| 6 | One-bar resilience + Sahayak mode | 🔨 offline queue built; Sahayak pending | airplane-mode booking gate open |
 | 7 | Local AI III — Proof of Work + civic rail | ⏳ | — |
 | 8 | Local AI IV — *Write* (optional tiny LLM) | ⏳ | — |
 | 9 | Demo hardening | ⏳ | — |
@@ -25,6 +25,21 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 - RLS is wide open for the hackathon; marked in `0001_init.sql`.
 
 ---
+
+## Phases 4-6 — *Hear*, media on the job, console, offline queue (built; physical gates open)
+
+**2026-09-21 · Offline booking queue** · _this commit_
+`src/lib/outbox.ts` + `/queued`: a booking made with no signal is written to the phone (with its idempotent booking key, photo, voice note, and the new customer's details if they had never registered), shown as "Waiting for signal" with the worker's phone number for a plain call, and sent automatically on network return (`expo-network` listener + 15 s heartbeat + app start). Both customer homes show a "A request is waiting for signal" pill. **Gate open:** airplane mode → Request → network on → job reaches the worker untouched.
+
+**2026-09-21 · Department Console** · `e9ad1cc`
+`console/` - a static page, no build step (deliberate deviation from the Next.js plan: nothing to install or break at the venue). Live map (MapLibre + OpenStreetMap), stats strip, Jobs with **accept-on-behalf and step buttons** (same guarded moves as the phones), Verification queue with signed-URL document viewing and approve/reject, Workers with badge toggle, Panchayat reports with SLA countdowns turning red, false-closure states. Realtime + 5 s poll. Verified in a browser against the live database: 12 workers plotted, tiles loading, connection stamp live. Run: `cd console && py -m http.server 5050`.
+
+**2026-09-21 · Speak the problem + photo and voice on the job** · `e9ad1cc`
+- `SpeakToFind` - hold to talk. **On-device recognition only** (`requiresOnDeviceRecognition`; never a cloud recogniser). The same breath is persisted as the worker's voice note. No offline pack for the language → honest notice + one-tap pack download + voice-note-only path. No recogniser at all → `expo-audio` recording. **Verified on the Redmi:** Google's on-device SODA recogniser engaged; a silent hold ended in "Your voice note is saved for the worker", no crash. Spoken-phrase accuracy still needs a human voice.
+- `src/ai/intent.ts` - lexicon in English, Hindi, Telugu, native and romanised ("fan kharab hai", "नल से पानी टपक रहा है", "మోటార్ స్టార్ట్ కావడం లేదు"); danger words (sparks, shock, burning) outrank everything so the safety card appears. 20 phrase checks.
+- Jobs carry `transcript`, `urgent`, `vision_conf`; **text first, media later** (`src/lib/media.ts`): photo and voice upload after the job is sent, retry across restarts, never block a booking. Worker's job card shows the photo, what the customer said, a playable voice note and an Urgent stamp.
+- Native rebuild with speech, audio, sharing, view-shot, network modules: success (14 min).
+- `supabase/migrations/0004_media_trust_civic.sql` - storage buckets, verification trigger, Proof of Work columns, the whole civic rail (routing table, duplicate merge within 60 m, false-closure log). **Needs to be run by you once.** The app degrades gracefully until then (bookings still work; uploads wait).
 
 ## Phase 3 — Local AI I: *See* ✅ (fine-tuned model awaits the dataset)
 
