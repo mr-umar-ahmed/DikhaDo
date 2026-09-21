@@ -12,7 +12,7 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 | 3 | Local AI I — *See*: camera, on-device classifier, quality gate, safety card | ✅ done (72 ms on device) · fine-tuned model awaits the dataset | **passed** on phone, airplane mode |
 | 4 | Local AI II — *Hear*: on-device speech → category; photo + voice on the job | ✅ built, speech engine verified on phone | spoken-phrase test + media upload need migration 0004 |
 | 5 | Trust + Department Console | ✅ built (console verified in browser; ID upload + receipt in app) | laptop-approves-badge gate open (needs migration 0004) |
-| 6 | One-bar resilience + Sahayak mode | 🔨 offline queue built; Sahayak pending | airplane-mode booking gate open |
+| 6 | One-bar resilience + Sahayak mode | ✅ built: offline queue, text-first uploads, assisted booking | airplane-mode booking gate open |
 | 7 | Local AI III — Proof of Fix + civic rail | ✅ built, unit-tested, renders on phone | remove-the-trash re-scan gate open (needs migration 0004) |
 | 8 | Local AI IV — *Write* (optional tiny LLM) | ⏳ | — |
 | 9 | Demo hardening | ⏳ | — |
@@ -27,6 +27,12 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 ---
 
 ## Phases 4-6 — *Hear*, media on the job, console, offline queue (built; physical gates open)
+
+**2026-09-21 · Sahayak desk, demo history, docs** · _this commit_
+- **Sahayak mode is real** (the last placeholder in the app is gone): a CSC operator or neighbour enters a walk-in customer's name and phone and books in *their* name - the worker calls them, the rating is theirs - then clears the desk for the next person. Reuses the whole customer flow under an indigo "Booking for …" banner.
+- `scripts/seed-demo.mjs` - three finished, paid, rated jobs (walked through the real state machine) and two panchayat reports, one already past its deadline. Ran against the live database: jobs created (`DKD-2026-000013…15`); reports wait for migration 0004. Console verified showing them: 3 jobs today, ₹630 earned.
+- Console no longer polls a missing table every 5 s.
+- `README.md` rewritten (run, release build, backend, console, demo, privacy, licences); `docs/SECOND_COUNTRY.md` - a second country is a data change in five places; `PLAN.md` - status and the deliberate deviations, with reasons.
 
 **2026-09-21 · Phase 5 (app side): Verified badge flow + shareable receipt** · _this commit_
 - `/verify-me` - the worker photographs an ID card (back camera) and their face (front camera); both go to a **private** storage bucket the console reads through 5-minute signed links; a `verifications` row starts the check. The duty screen shows where the badge stands - ask / being checked / approved (green stamp) / rejected with a way to retry - refreshed on focus and every 6 s while pending, so the approval made on the laptop appears on the phone by itself.

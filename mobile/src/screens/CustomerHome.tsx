@@ -13,7 +13,7 @@ import { childrenOf, topLevel } from '@/data/catalog';
 import { space } from '@/theme/tokens';
 
 /** The no-AI path and the Simple-mode home: a picture grid of everything that can be fixed. */
-export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
+export function CustomerHome({ onCamera, banner }: { onCamera?: () => void; banner?: React.ReactNode }) {
   const { t } = useTranslation();
   const router = useRouter();
   const [activeJob, setActiveJob] = useState<string | null>(null);
@@ -39,6 +39,7 @@ export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
       {activeJob && (
         <Notice title={t('yourActiveJob')} action={t('openJob')} onAction={() => router.push({ pathname: '/job/[id]', params: { id: activeJob } })} />
       )}
+      {banner}
       {onCamera && <PrimaryButton label={t('useCamera')} icon="camera" tone="ink" onPress={onCamera} />}
       <View style={{ alignItems: 'center', gap: 8 }}>
         <SpeakToFind tone="paper" onGo={(code) => router.push({ pathname: '/workers/[code]', params: { code } })} />
@@ -59,6 +60,7 @@ export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
       </View>
       <PrimaryButton label={t('civicTitle')} tone="indigo" onPress={() => router.push('/report')} />
       {report && <Notice title={t('myReport', { serial: report.serial })} action={t('openJob')} onAction={() => router.push({ pathname: '/civic/[id]', params: { id: report.id } })} />}
+      {/* At a helper's desk the banner owns the way out. */}
       <ChangeRoleLink />
     </PaperScreen>
   );

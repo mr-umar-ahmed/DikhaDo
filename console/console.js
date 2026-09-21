@@ -58,7 +58,8 @@
       db.from('requests').select('*,worker:profiles!requests_worker_id_fkey(name,phone),customer:profiles!requests_customer_id_fkey(name,phone)').gte('created_at', since).order('created_at', { ascending: false }).limit(200),
       db.from('workers').select('*,profile:profiles!workers_profile_id_fkey(name,phone,village)').order('last_seen', { ascending: false, nullsFirst: false }),
       db.from('verifications').select('*,profile:profiles!verifications_worker_id_fkey(name,phone)').eq('status', 'pending').order('created_at'),
-      db.from('civic_tickets').select('*').order('created_at', { ascending: false }).limit(200),
+      // Once we know the table is missing (migration 0004 not run), stop asking every five seconds; a reload asks again.
+      state.civicReady ? db.from('civic_tickets').select('*').order('created_at', { ascending: false }).limit(200) : Promise.resolve({ data: [], error: { message: 'not migrated' } }),
       db.from('categories').select('code,name_en'),
     ]);
     if (jobs.error) return setConn(false, jobs.error.message);

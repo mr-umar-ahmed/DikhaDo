@@ -13,7 +13,7 @@ const en = {
   roleSahayak: 'I help others book',
   roleSahayakHint: 'For CSC operators and village helpers',
   sahayakHomeTitle: 'Book for someone',
-  sahayakHomeBody: 'Assisted booking arrives after the core flow.',
+  sahayakHomeBody: 'For someone who has no smartphone. The worker will call their number, not yours.',
   changeRole: 'Change how you use the app',
   worksOnWeakSignal: 'Works on weak signal',
 
@@ -224,6 +224,11 @@ const en = {
   methodUpi: 'UPI',
   shareReceipt: 'Share the receipt',
   paidStamp: 'PAID',
+  theirName: 'Their name',
+  theirPhone: 'Their phone number',
+  bookForThem: 'Book for this person',
+  bookingFor: 'Booking for',
+  nextPerson: 'Finish and seat the next person',
 };
 
 export type Strings = typeof en;
@@ -239,7 +244,7 @@ const hi: Strings = {
   roleSahayak: 'मैं दूसरों की बुकिंग में मदद करता हूँ',
   roleSahayakHint: 'CSC संचालक और गाँव के सहायक के लिए',
   sahayakHomeTitle: 'किसी के लिए बुक करें',
-  sahayakHomeBody: 'सहायक बुकिंग मुख्य सुविधा के बाद आएगी।',
+  sahayakHomeBody: 'उनके लिए जिनके पास स्मार्टफ़ोन नहीं है। कारीगर उन्हीं के नंबर पर कॉल करेगा, आपके नहीं।',
   changeRole: 'ऐप इस्तेमाल करने का तरीका बदलें',
   worksOnWeakSignal: 'कमज़ोर नेटवर्क पर भी चलता है',
 
@@ -450,6 +455,11 @@ const hi: Strings = {
   methodUpi: 'UPI',
   shareReceipt: 'रसीद भेजें',
   paidStamp: 'भुगतान हुआ',
+  theirName: 'उनका नाम',
+  theirPhone: 'उनका फ़ोन नंबर',
+  bookForThem: 'इनके लिए बुक करें',
+  bookingFor: 'किसके लिए बुकिंग',
+  nextPerson: 'पूरा करें और अगले व्यक्ति को बुलाएँ',
 };
 
 const te: Strings = {
@@ -463,7 +473,7 @@ const te: Strings = {
   roleSahayak: 'నేను ఇతరులకు బుకింగ్‌లో సహాయం చేస్తాను',
   roleSahayakHint: 'CSC నిర్వాహకులు, గ్రామ సహాయకుల కోసం',
   sahayakHomeTitle: 'ఇతరుల కోసం బుక్ చేయండి',
-  sahayakHomeBody: 'సహాయక బుకింగ్ ప్రధాన సదుపాయం తర్వాత వస్తుంది.',
+  sahayakHomeBody: 'స్మార్ట్‌ఫోన్ లేని వారి కోసం. పనివారు మీ నంబర్‌కు కాదు, వారి నంబర్‌కే కాల్ చేస్తారు.',
   changeRole: 'యాప్ వాడే విధానాన్ని మార్చండి',
   worksOnWeakSignal: 'బలహీన సిగ్నల్‌లోనూ పనిచేస్తుంది',
 
@@ -674,6 +684,11 @@ const te: Strings = {
   methodUpi: 'UPI',
   shareReceipt: 'రసీదు పంపండి',
   paidStamp: 'చెల్లించారు',
+  theirName: 'వారి పేరు',
+  theirPhone: 'వారి ఫోన్ నంబర్',
+  bookForThem: 'వీరి కోసం బుక్ చేయండి',
+  bookingFor: 'ఎవరి కోసం బుకింగ్',
+  nextPerson: 'పూర్తి చేసి తదుపరి వ్యక్తిని పిలవండి',
 };
 
 export const resources = {

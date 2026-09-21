@@ -113,7 +113,7 @@ mobile/                       Expo SDK 57 · React Native 0.86 · TypeScript · 
 supabase/
   migrations/0001…0003        schema, PostGIS matching, triggers, transition guards
   seed.sql                    catalog, rate cards, 12 demo workers; move_demo_workers(lat,lng)
-console/                      Next.js + Tailwind + MapLibre (Phase 5): verification queue, live job map, civic tickets
+console/                      static page, no build step (MapLibre + supabase-js): live map, jobs, verification queue, civic tickets
 ml/                           train.py, export to INT8 tflite, dataset manifest (Phase 3)
 docs/                         review reports, screenshots, MODELS.md, SECOND_COUNTRY.md
 ```
@@ -125,6 +125,15 @@ docs/                         review reports, screenshots, MODELS.md, SECOND_COU
 **Build environment (Windows).** Native builds must run from a short real path (`C:\dk`), not the OneDrive folder (260-char limit) and not a `subst` drive (Node realpaths it). `JAVA_HOME` must be JDK 17. Xiaomi phones need *Install via USB* enabled.
 
 ## 7. Phases
+
+**Status, 21 Sep 2026:** Phases 0-7 are built; 0-3 have passed their physical gates on a Redmi Note 13 Pro+. Phases 4-7 are built, type-checked and unit-tested, and their speech engine, screens and console are verified on the phone / in a browser; their end-to-end gates wait on database migration 0004 and a human voice. Phase 8 (optional LLM) is not started. See PROGRESS.md for the evidence behind each line.
+
+**Deliberate deviations from the first version of this plan**
+- *Console is a static page, not Next.js.* Same features, but nothing to install, build or break at the venue; it opens with `python -m http.server`.
+- *Proof of Work became Proof of Fix, on the civic rail only.* A before/after verdict means something for a garbage heap or an open drain. A repaired fan looks the same before and after, so for worker jobs the rating stays the proof. Saying so is better than shipping a verdict that cannot be right.
+- *Scene fingerprints come from the classifier's own output* (top-40 probabilities) instead of a second 6 MB embedding model: zero extra download, fast enough, and good at the one thing needed - "is this the same place?".
+- *Offline queue uses AsyncStorage, not SQLite:* a handful of small records; one less native module.
+- *On-device speech is strict:* `requiresOnDeviceRecognition` always. No pack for the language means a voice note, never a cloud recogniser.
 
 Each phase lists goal, scope, the decisions that matter, how it is verified, the physical gate, and what gets cut first if time is short.
 
@@ -146,7 +155,7 @@ Each phase lists goal, scope, the decisions that matter, how it is verified, the
 **Verified:** `scripts/lifecycle-test.mjs` — 33 checks green against the live backend, realtime median ≈ 500 ms.
 **Gate:** full loop across two phones in under 60 s. One-phone loop passed; two-phone timing pending a second device.
 
-### Phase 3 — Local AI I: *See* (next)
+### Phase 3 — Local AI I: *See* ✔ (fine-tuned model awaits the self-shot dataset)
 **Goal:** the signature gesture. Point, snap, and the phone names the problem — with no network.
 **Scope:**
 1. `src/ai/capabilities.ts` — probe RAM / low-RAM flag / model load → tier; Simple mode toggle in the role screen.
@@ -162,26 +171,26 @@ Each phase lists goal, scope, the decisions that matter, how it is verified, the
 **Gate (physical):** in airplane mode, ten snaps of a fan / switchboard / tap give the right category in under a second each, zero crashes.
 **Cut line:** the motion (→ crossfade), then the quality gate. Never the fallback to the grid.
 
-### Phase 4 — Local AI II: *Hear*, and the photo + voice on the job
+### Phase 4 — Local AI II: *Hear*, and the photo + voice on the job (built)
 **Goal:** a user who cannot read or type can still book.
 **Scope:** hold-to-speak on the lens and the grid; on-device speech recognition (`expo-speech-recognition`, on-device flag, hi-IN / te-IN / en-IN); `src/ai/intent.ts` keyword lexicon → category, shown as a confirmable suggestion; if on-device speech is unavailable the same button records an 8-second voice note (AAC ~16 KB); photo (≤1280 px, q60) and voice note upload to Supabase Storage *after* the text job is sent; worker's job card plays the note and shows the photo.
 **Risk:** many phones lack offline hi/te speech packs — hence the voice-note fallback is a first-class path, and the probe decides per language.
 **Gate:** speak a problem in Telugu or Hindi in airplane mode → right category suggested; with network on, the worker phone shows the photo and plays the note.
 **Cut line:** intent matching for Telugu, then on-device speech entirely (voice note only).
 
-### Phase 5 — Trust, and the Department Console
+### Phase 5 — Trust, and the Department Console (built)
 **Goal:** answer "why should I let this stranger into my house?"
 **Scope:** worker uploads ID + selfie → `verifications`; web console (Next.js + Tailwind + MapLibre + Supabase realtime): verification queue with approve/reject, live job map, SLA-style clocks, **accept-on-behalf for seeded demo workers** (closes the last open review finding); green Verified badge live on phones; tier rules visible to the worker; "call before coming" preference honoured on the job card; paper job card rendered as an image and shared to WhatsApp as the worker's invoice.
 **Gate:** an unverified worker becomes verified from the laptop and the badge appears on the customer phone within five seconds.
 **Cut line:** map view in the console (table only), then invoice sharing.
 
-### Phase 6 — One-bar resilience and Sahayak mode
+### Phase 6 — One-bar resilience and Sahayak mode (built: offline queue, assisted booking)
 **Goal:** the promise on the badge is literally true.
 **Scope:** `expo-sqlite` write-ahead queue for requests composed with no signal; visible "Queued — sends when signal returns" state; text first (~2 KB), photo and voice later, byte counts logged as evidence; cached catalog + last workers; Sahayak mode: register a worker on their behalf, book for a walk-in customer with the customer's phone number on the job.
 **Gate:** compose a request in airplane mode → toggle network on → it reaches the worker without touching the phone again.
 **Cut line:** Sahayak worker-onboarding (keep assisted booking).
 
-### Phase 7 — Local AI III: Proof of Work, and the civic rail
+### Phase 7 — Local AI III: Proof of Fix, and the civic rail (built)
 **Goal:** the accountability layer, and the original Theek idea as a topping.
 **Scope:** after "done", optional before/after: ghost overlay of the first photo for alignment, embedding cosine + re-classification → three-state verdict shown to both sides and stored for disputes; civic rail: when the model sees `GARBAGE` / `CIVIC_*` on public land the sheet offers "Report to panchayat" → paper grievance with serial, department and SLA from a routing table → console map with countdown, red on breach; duplicate reports merge by geohash + embedding similarity and add signatures (collective weight).
 **Gate:** remove the planted trash and re-scan → `fixed`; leave it → `still broken` even if the console marked it resolved, and the false closure is logged.
