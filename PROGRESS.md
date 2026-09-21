@@ -1,5 +1,7 @@
 # DikhaDo — Progress Log
 
+> **This repository is a pre-event prototype.** The iQOO City Battles rules require the submitted code to be written during the event window (Sat 26 Sep 10:00 onward). Nothing here is to be copied into the event build; it is the record of what was learned.
+
 Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest entries first inside each phase; every entry names the commit that delivered it.
 
 ## Status at a glance
@@ -27,6 +29,14 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 ---
 
 ## Phases 4-6 — *Hear*, media on the job, console, offline queue (built; physical gates open)
+
+**2026-09-22 · Gates passed on the phone; official rules found**
+- **Migration 0005 applied** (by the user) and verified: `civic-test.mjs` 29/29, including the five hardening checks that failed before it.
+- **Voice gate passed:** the user said "fan kharab ho gaya"; the on-device recogniser transcribed it and the lexicon routed it to *Fan not working*.
+- **Photo + voice on a job: passed.** `DKD-2026-000021` (Umar → Ramesh Goud) arrived with photo and voice note attached.
+- **Phase 2 timing gate: passed with one phone + `demo-bot.mjs`:** request → accepted 3.7 s → on the way 7.9 s → working 13.0 s → done 19.2 s → paid 31.0 s → rated **39.5 s** (gate: < 60 s).
+- Dataset started in Dataset mode: 74 photos across 10 classes, pulled to `ml/dataset/` (the pull script works from `C:\dk`; far below the 60-per-class floor, so no training yet).
+- **Official rules** (https://iqoo.reskilll.com/guide, read 2026-09-22): *"Original work only: code written during the event window. No shipping a pre-built product. Open-source libraries and frameworks are fine with attribution; carrying in a completed app is not."* Organisers may verify that a project was built inside the window. **This repository is therefore a pre-event prototype and cannot be the submission.** Its value is what it proved: the architecture, the library APIs, the pitfalls, the design and the demo. See the event plan for how that knowledge is used at the event.
 
 **2026-09-21 · Migration 0004 applied and verified live; 0005 hardening written** · _this commit_
 - 0004's first run failed (`42P13`, my bug: `civic_route` selected four columns for three OUT parameters; it had never been executed because the anon key cannot run DDL and this machine has no Postgres). Fixed in `ea02ae9`; the editor's single transaction meant nothing was half-applied. **Second run succeeded.**
