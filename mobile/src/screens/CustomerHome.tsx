@@ -6,6 +6,7 @@ import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { CategoryTile } from '@/components/CategoryTile';
 import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
 import { SpeakToFind } from '@/components/SpeakToFind';
+import { myReports } from '@/lib/civic';
 import { queued } from '@/lib/outbox';
 import { openJobId } from '@/lib/requests';
 import { childrenOf, topLevel } from '@/data/catalog';
@@ -17,6 +18,7 @@ export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
   const router = useRouter();
   const [activeJob, setActiveJob] = useState<string | null>(null);
   const [waiting, setWaiting] = useState<string | null>(null);
+  const [report, setReport] = useState<{ id: string; serial: string } | null>(null);
 
   // Coming back to the home screen must never lose a job in progress.
   useFocusEffect(
@@ -24,6 +26,7 @@ export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
       let alive = true;
       openJobId().then((id) => alive && setActiveJob(id));
       queued().then((list) => alive && setWaiting(list[0]?.clientId ?? null));
+      myReports().then((list) => alive && setReport(list[0] ?? null));
       return () => {
         alive = false;
       };
@@ -54,6 +57,8 @@ export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
           />
         ))}
       </View>
+      <PrimaryButton label={t('civicTitle')} tone="indigo" onPress={() => router.push('/report')} />
+      {report && <Notice title={t('myReport', { serial: report.serial })} action={t('openJob')} onAction={() => router.push({ pathname: '/civic/[id]', params: { id: report.id } })} />}
       <ChangeRoleLink />
     </PaperScreen>
   );

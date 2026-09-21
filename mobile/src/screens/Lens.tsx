@@ -103,7 +103,7 @@ export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
   const judge = useCallback(
     async (s: Shot, skipQualityGate: boolean) => {
       const d = await diagnose(s.rgb, INPUT_SIZE, classify, { skipQualityGate });
-      setDraft({ photoUri: s.uri, visionConf: d.kind === 'sure' ? d.best.confidence : undefined });
+      setDraft({ photoUri: s.uri, rgb: s.rgb, visionConf: d.kind === 'sure' ? d.best.confidence : undefined });
       setDiagnosis(d);
       setStage('sheet');
       tuck.value = withTiming(1, { duration: TUCK_MS, easing: Easing.out(Easing.cubic) });
@@ -211,7 +211,7 @@ export function Lens({ onGrid }: { onGrid: (remember: boolean) => void }) {
       {diagnosis && shot && (
         <Animated.View style={[styles.sheet, { paddingTop: insets.top }, sheetStyle]}>
           <ScrollView contentContainerStyle={[styles.sheetBody, { paddingBottom: insets.bottom + space.xl }]}>
-            <DiagnosisSheet photoUri={shot.uri} diagnosis={diagnosis} onGo={go} onRetake={retake} onUseAnyway={() => judge(shot, true)} onGrid={() => onGrid(false)} />
+            <DiagnosisSheet photoUri={shot.uri} diagnosis={diagnosis} onGo={go} onRetake={retake} onUseAnyway={() => judge(shot, true)} onGrid={() => onGrid(false)} onReport={(kind) => router.push({ pathname: '/report', params: kind ? { kind } : {} })} />
             {/* Below the record, not above it: the frozen frame lands on the header's fixed position. */}
             {activeJob && <Notice title={t('yourActiveJob')} action={t('openJob')} onAction={openJob} />}
           </ScrollView>

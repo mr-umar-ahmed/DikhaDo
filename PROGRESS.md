@@ -13,7 +13,7 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 | 4 | Local AI II — *Hear*: on-device speech → category; photo + voice on the job | ✅ built, speech engine verified on phone | spoken-phrase test + media upload need migration 0004 |
 | 5 | Trust + Department Console | 🔨 console done and verified; in-app ID upload next | — |
 | 6 | One-bar resilience + Sahayak mode | 🔨 offline queue built; Sahayak pending | airplane-mode booking gate open |
-| 7 | Local AI III — Proof of Work + civic rail | ⏳ | — |
+| 7 | Local AI III — Proof of Fix + civic rail | ✅ built, unit-tested, renders on phone | remove-the-trash re-scan gate open (needs migration 0004) |
 | 8 | Local AI IV — *Write* (optional tiny LLM) | ⏳ | — |
 | 9 | Demo hardening | ⏳ | — |
 
@@ -27,6 +27,14 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 ---
 
 ## Phases 4-6 — *Hear*, media on the job, console, offline queue (built; physical gates open)
+
+**2026-09-21 · Phase 7: civic rail + on-device Proof of Fix** · _this commit_
+- `/report` - pick the kind (garbage, drain, pothole, streetlight, water pipe; icon + speaker), add a picture, optional note, **Send to the department**. Reached from the grid home and from the camera sheet ("This is on public land. Report it to the panchayat" - a full indigo button when the phone saw waste, a quiet link otherwise; the photo and its tensor ride along, so no second shot).
+- The database's routing table - not the phone, not a model - decides department, deadline and severity. A second report of the same kind within 60 m **adds a signature** to the open ticket instead of creating another (collective weight).
+- `/civic/[id]` - the paper complaint: mono serial and coordinates, status stamp, department, live deadline ("Late by 3 h 12 min" in red), "Reported by N citizens".
+- **Proof of Fix, on the phone:** `src/ai/signature.ts` fingerprints a scene from the classifier's own top-40 probabilities (no second model). Re-scan with a ghost overlay of the first photo → problem strength before vs after + scene similarity → `fixed` / `still there` / `unclear`, *with the reason shown* ("This does not look like the same place"; "The phone cannot judge this kind of problem"). **The citizen has the last word** - the phone's opinion only highlights a button. "Still there" on a ticket the department closed reopens it and logs the false closure.
+- Scope decision, stated plainly: a visual before/after verdict is meaningful for public problems; a repaired fan looks identical before and after, so for worker jobs the rating remains the proof.
+- 10 new unit checks (48 total, green). Screen verified rendering on the Redmi. **Submitting needs migration 0004.**
 
 **2026-09-21 · Offline booking queue** · _this commit_
 `src/lib/outbox.ts` + `/queued`: a booking made with no signal is written to the phone (with its idempotent booking key, photo, voice note, and the new customer's details if they had never registered), shown as "Waiting for signal" with the worker's phone number for a plain call, and sent automatically on network return (`expo-network` listener + 15 s heartbeat + app start). Both customer homes show a "A request is waiting for signal" pill. **Gate open:** airplane mode → Request → network on → job reaches the worker untouched.

@@ -1,7 +1,9 @@
 // Unit checks for the pure parts of the local AI layer. No phone, no model, no network.
 //   cd mobile && npx tsx scripts/ai-test.ts
 import { diagnose, type Classify } from '../src/ai/diagnose';
+import { problemStrength } from '../src/ai/civic';
 import { matchIntent } from '../src/ai/intent';
+import { judgeFix, signatureOf, similarity } from '../src/ai/signature';
 import { hitForLabel, scoreCategories } from '../src/ai/labelMap';
 import { assessQuality } from '../src/ai/quality';
 import { safetyFor } from '../src/ai/safety';
@@ -66,6 +68,22 @@ for (const [said, want] of [
 }
 const intentCodes = ['fan_dead','cooler_fridge','geyser_install','wiring_fault','switchboard','inverter','tap_leak','tank_overflow','borewell','pump_dead','bulk_waste','mechanic','carpentry','mason','farm','cleaning','appliance','electrical','plumbing'];
 check('every intent code exists in the catalog', intentCodes.every((c) => !!byCode(c)), intentCodes.filter((c) => !byCode(c)).join(','));
+
+// ── scene signature + Proof of Fix ────────────────────────────────────────────
+const vec = (pairs: [number, number][]) => { const v = new Float32Array(1001); pairs.forEach(([i, p]) => (v[i] = p)); return v; };
+const street = vec([[10, 0.3], [11, 0.2], [12, 0.1]]);
+const streetWithTrash = vec([[10, 0.2], [11, 0.15], [12, 0.05], [413, 0.5]]);
+const kitchen = vec([[500, 0.4], [501, 0.3]]);
+check('the same scene with and without the trash is still recognisably the same place', similarity(signatureOf(streetWithTrash), signatureOf(street)) > 0.5, similarity(signatureOf(streetWithTrash), signatureOf(street)).toFixed(2));
+check('a different room is a different place', similarity(signatureOf(streetWithTrash), signatureOf(kitchen)) < 0.05);
+check('identical photos score 1', Math.abs(similarity(signatureOf(street), signatureOf(street)) - 1) < 1e-6);
+check('trash gone, same place -> fixed', judgeFix(0.5, 0.02, 0.7).verdict === 'fixed');
+check('trash still there -> still broken', judgeFix(0.5, 0.45, 0.8).verdict === 'still_broken');
+check('another street entirely -> unclear, never "fixed"', judgeFix(0.5, 0.0, 0.05).verdict === 'unclear');
+check('the phone never saw the problem -> it cannot certify its absence', judgeFix(0.03, 0.0, 0.9).verdict === 'unclear');
+check('half gone -> unclear, the citizen decides', judgeFix(0.5, 0.2, 0.7).verdict === 'unclear');
+check('garbage strength reads the shipped labels', problemStrength('garbage', shipped as string[], vec([[(shipped as string[]).indexOf('ashcan'), 0.4], [(shipped as string[]).indexOf('plastic bag'), 0.2]])) > 0.59);
+check('a pothole has no visual words: strength is 0, the citizen judges', problemStrength('pothole', shipped as string[], street) === 0);
 
 // ── quality gate ─────────────────────────────────────────────────────────────
 const S = 224;

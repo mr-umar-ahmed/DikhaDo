@@ -41,12 +41,12 @@ export function PaperScreen({ title, subtitle, back = true, children }: { title:
 export function PrimaryButton({ label, onPress, tone = 'amber', icon, disabled }: {
   label: string;
   onPress: () => void;
-  tone?: 'amber' | 'green' | 'ink';
+  tone?: 'amber' | 'green' | 'ink' | 'indigo';
   icon?: React.ComponentProps<typeof MaterialCommunityIcons>['name'];
   disabled?: boolean;
 }) {
   const { lang } = usePrefs();
-  const bg = { amber: colors.worklightAmber, green: colors.stampGreen, ink: colors.onPaper }[tone];
+  const bg = { amber: colors.worklightAmber, green: colors.stampGreen, ink: colors.onPaper, indigo: colors.stampIndigo }[tone];
   const fg = tone === 'amber' ? colors.lensInk : colors.onLens;
   return (
     <Pressable

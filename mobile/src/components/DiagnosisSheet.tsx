@@ -25,13 +25,15 @@ export function destinationFor(score: CategoryScore): Destination | null {
  * The paper record of what the phone saw. Three honest outcomes - sure, unsure, could not tell -
  * and a bad photo is a fourth. Every one of them has a way forward; none is a dead end.
  */
-export function DiagnosisSheet({ photoUri, diagnosis, onGo, onRetake, onUseAnyway, onGrid }: {
+export function DiagnosisSheet({ photoUri, diagnosis, onGo, onRetake, onUseAnyway, onGrid, onReport }: {
   photoUri: string;
   diagnosis: Diagnosis;
   onGo: (to: Destination) => void;
   onRetake: () => void;
   onUseAnyway: () => void;
   onGrid: () => void;
+  /** The civic rail. `garbage` when the phone saw waste, so the kind is already chosen. */
+  onReport: (kind?: 'garbage') => void;
 }) {
   const { lang } = usePrefs();
   const { t } = useTranslation();
@@ -56,6 +58,7 @@ export function DiagnosisSheet({ photoUri, diagnosis, onGo, onRetake, onUseAnywa
   const bestEntry = best ? (best.problem ? byCode(best.problem) : undefined) ?? byCode(best.category) : undefined;
   // The percentage is how sure the phone is of the CATEGORY, so the stamp names the category.
   const bestCategory = best ? byCode(best.category) : undefined;
+  const sawWaste = (diagnosis.kind === 'sure' && diagnosis.best.category === 'waste') || (diagnosis.kind === 'unsure' && diagnosis.guesses.some((g) => g.category === 'waste'));
   const candidates = diagnosis.kind === 'sure' ? 1 + diagnosis.others.length : diagnosis.kind === 'unsure' ? diagnosis.guesses.length : 0;
   const bestTo = best ? destinationFor(best) : null;
 
@@ -110,6 +113,13 @@ export function DiagnosisSheet({ photoUri, diagnosis, onGo, onRetake, onUseAnywa
 
       {diagnosis.kind !== 'bad-photo' && (
         <>
+          {sawWaste ? (
+            <PrimaryButton label={t('reportPublic')} tone="indigo" onPress={() => onReport('garbage')} />
+          ) : (
+            <Pressable accessibilityRole="button" onPress={() => onReport()} style={styles.link}>
+              <Text style={[type.label, { color: colors.stampIndigo }]}>{t('reportPublic')}</Text>
+            </Pressable>
+          )}
           {diagnosis.kind === 'unknown' ? (
             <PrimaryButton label={t('useGrid')} onPress={onGrid} />
           ) : (
