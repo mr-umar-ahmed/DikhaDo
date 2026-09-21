@@ -47,7 +47,15 @@
       "expo-asset",
       "expo-speech-recognition",
       "expo-audio",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "useLegacyPackaging": true
+          }
+        }
+      ]
     ]
   }
 }

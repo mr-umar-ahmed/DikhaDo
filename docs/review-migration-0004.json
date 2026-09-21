@@ -1,0 +1,137 @@
+{
+ "confirmed": [
+  {
+   "title": "civic_tickets.geog is only set by report_civic(); rows inserted directly (seed-demo.mjs) get geog = NULL and are invisible to the 60 m duplicate check",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 53,
+   "dimension": "typecheck",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "C:\\dk\\mobile\\scripts\\seed-demo.mjs line 50: db.from('civic_tickets').insert([{ kind:'garbage', ..., lat, lng, note:'Behind the bus stop...', signatures: 7 }, ...]) supplies lat/lng but no geog, and 0004 has no lat/lng -> geog trigger (unlike requests, which got requests_sync_geog in 0002). Later: rpc('report_civic', { p_kind:'garbage', p_lat/p_lng within 60 m of that seeded ticket }).",
+   "effect": "No error. In report_civic, st_dwithin(t.geog, st_makepoint(p_lng,p_lat)::geography, 60) evaluates to NULL for every directly-inserted row, so `found` is false and a SECOND ticket with signatures = 1 is opened instead of the seeded ticket going from 7 to 8 citizens. The collective-weight behaviour silently never applies to seeded tickets, and the gist index civic_geog_idx does not contain them. This does NOT block the migration.",
+   "fix": "Insert immediately after line 62 (`create index if not exists civic_geog_idx on civic_tickets using gist (geog);`) in C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql:\n\n-- Rows inserted with plain lat/lng (seed script, console) still get a geography, as on requests (0002).\ncreate or replace function civic_sync_geog() returns trigger language plpgsql as $$\nbegin\n  new.geog := st_makepoint(new.lng, new.lat)::geography;\n  return new;\nend $$;\ndrop trigger if exists civic_tickets_geog on civic_tickets;\ncreate trigger civic_tickets_geog before insert or update of lat, lng on civic_tickets\n  for each row execute function civic_sync_geog();",
+   "why": "The defect is real, but it does not block the migration and nothing in the demo path reaches it today. I could not refute the mechanics, so I lowered the severity from \"wrong-behaviour\" to \"minor\".\n\n**What I checked**\n- `C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql` line 53 declares `geog geography(point, 4326)` as nullable with no default. The only thing that writes it is the INSERT inside `report_civic()` (lines 108-110).\n- 0004 has no trigger that derives `geog` from `lat`/`lng`. `requests` got one in `C:\\dk\\supabase\\migrations\\0002_request_latlng.sql` lines 5-13.\n- A search of C:\\dk found one direct inserter into `civic_tickets`: `C:\\dk\\mobile\\scripts\\seed-demo.mjs` lines 50-53. "
+  },
+  {
+   "title": "civic_tickets.geog is only filled by report_civic(); direct inserts (seed-demo.mjs) leave it NULL, so those tickets can never be matched for collective signatures",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 53,
+   "dimension": "supabase",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "C:\\dk\\mobile\\scripts\\seed-demo.mjs line 50: db.from('civic_tickets').insert([{ kind:'garbage', ..., lat, lng, signatures: 7, ... }]) supplies lat/lng but no geog. Unlike requests (0002 trigger requests_sync_geog), civic_tickets has no trigger that derives geog. Afterwards a phone calls rpc('report_civic', { p_kind:'garbage', p_lat/p_lng = the seeded spot, ... }).",
+   "effect": "No SQL error. Seeded rows have geog = NULL, so in report_civic `st_dwithin(t.geog, st_makepoint(p_lng,p_lat)::geography, 60)` evaluates to NULL and the row is never FOUND. A report at exactly the seeded heap opens a second ticket (signatures = 1) instead of raising the seeded one from 7 to 8. Any ticket inserted or re-located via plain PostgREST table writes has the same problem, and civic_geog_idx never covers them.",
+   "fix": "Insert immediately after line 62 (`create index if not exists civic_geog_idx on civic_tickets using gist (geog);`) in C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql:\n\n-- Direct table inserts (seed-demo.mjs) give lat/lng only; derive geog the same way requests does (0002).\ndrop trigger if exists civic_tickets_geog on civic_tickets;\ncreate trigger civic_tickets_geog before insert or update of lat, lng on civic_tickets\n  for each row execute function requests_sync_geog();",
+   "why": "The claim is correct, but it is a minor demo-data gap and will not cause another failed migration run.\n\n**Why the claim holds**\n- 0004 defines `civic_tickets.geog` as a plain nullable column (line 53) with no default, generated expression or trigger. The only writer of `geog` is the INSERT inside `report_civic` (lines 108-110).\n- `C:\\dk\\mobile\\scripts\\seed-demo.mjs` lines 50-53 insert two tickets through PostgREST with `lat`/`lng` but no `geog`, so both rows get `geog = NULL`.\n- In `report_civic`, `st_dwithin(NULL, ...)` returns NULL and the WHERE clause rejects the row. FOUND is false, and a report at the seeded spot opens a new ticket with `signatures = 1` instead of raising the seeded one"
+  },
+  {
+   "title": "report_civic fails with a foreign-key error when the phone's saved customer profile no longer exists (new-ticket branch only)",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 108,
+   "dimension": "supabase",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "C:\\dk\\mobile\\src\\app\\report.tsx line 71 passes reporterId = savedCustomer().profileId from AsyncStorage; civic.ts line 67 sends it as p_reporter. If that profiles row was deleted (demo data cleaned in the dashboard; the job path already anticipates this with IdentityGone on 23503), report_civic reaches `insert into civic_tickets (reporter_id, ...) values (p_reporter, ...)`.",
+   "effect": "PostgREST returns HTTP 409 with code 23503: `insert or update on table \"civic_tickets\" violates foreign key constraint \"civic_tickets_reporter_id_fkey\"`. report.tsx shows the generic backend error and the citizen can never file a new report from that phone, while the 'signed' branch (which does not write reporter_id) succeeds - inconsistent. civic.ts has no 23503 handling.",
+   "fix": "In C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql, line 109, replace\n\n  values (p_reporter, p_kind, r.department, r.sla_hours, r.severity, p_lat, p_lng,\n\nwith\n\n  values ((select p.id from profiles p where p.id = p_reporter), p_kind, r.department, r.sla_hours, r.severity, p_lat, p_lng,\n\n(A reporter whose profile is gone is stored as NULL, i.e. an anonymous citizen. No other line changes. This is optional and is not needed for the migration to apply.)",
+   "why": "The defect is real, but it is a runtime edge case. It cannot cause another failed run of migration 0004. The file parses and applies with or without this change. Nothing was run; this comes from reading the files.\n\n**Why it is real**\n- `civic_tickets.reporter_id` is `uuid references profiles(id)` (0004 line 46). That is a plain, immediate foreign key.\n- `report.tsx` line 70-71 sends `savedCustomer()?.profileId` from AsyncStorage with no check that the row still exists. `civic.ts` line 67 passes it on as `p_reporter`.\n- If that profile is gone, the new-ticket insert at lines 108-111 raises 23503: `insert or update on table \"civic_tickets\" violates foreign key constraint \"civic_tickets_reporte"
+  },
+  {
+   "title": "report_civic duplicate check is not serialized: two simultaneous reports of the same problem create two tickets",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 96,
+   "dimension": "supabase",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "Two phones call rpc('report_civic', { p_kind:'garbage', p_lat, p_lng within 60 m of each other }) at the same moment (e.g. a stage demo of 'ten citizens, one ticket'). Under READ COMMITTED both `select * into existing ...` run before either insert commits.",
+   "effect": "No error. Both calls see no open ticket, both insert: two CIV- serials with signatures = 1 each instead of one ticket with signatures = 2. Later reports attach only to whichever is nearest, so the collective weight stays split.",
+   "fix": "Optional. In report_civic, replace the single line\n\n  select * into existing from civic_tickets t\n\nwith\n\n  -- Serialize reports of the same kind so two simultaneous reports cannot both miss the open ticket.\n  perform pg_advisory_xact_lock(hashtext('report_civic:' || p_kind));\n\n  select * into existing from civic_tickets t",
+   "why": "The race is real, but it is cosmetic. It cannot make migration 0004 fail and it never raises an error at run time. The fix is optional hardening and should not be a reason for another edit-and-rerun cycle on its own.\n\n**Why the race exists** (`C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql`, lines 87-114)\n- `report_civic` is a check-then-insert: it selects the nearest open ticket of the same kind within 60 m, and inserts a new one if none is found.\n- Nothing in the schema backs this up. `civic_tickets` has only the primary key, a unique `serial` and a gist index on `geog`; there is no unique or exclusion constraint on kind plus location.\n- PostgREST runs each rpc in its own READ COMMIT"
+  },
+  {
+   "title": "Rows inserted straight into civic_tickets (seed-demo.mjs) get geog = NULL, so report_civic's 60 m duplicate check can never match them",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 53,
+   "dimension": "callers",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "C:\\dk\\mobile\\scripts\\seed-demo.mjs line 50: db.from('civic_tickets').insert([{ kind:'garbage', department, sla_hours, severity, lat, lng, note, signatures:7, created_at, updated_at }, ...]) - no geog key, and unlike requests (0002 requests_sync_geog trigger) civic_tickets has nothing that derives geog from lat/lng. Later: rpc('report_civic', { p_kind:'garbage', p_lat/p_lng within 60 m of that seeded heap }).",
+   "effect": "Does NOT block the migration and the seed insert itself succeeds (every NOT NULL column without a default - kind, department, sla_hours, severity, lat, lng - is supplied; geog is nullable; both bulk rows have identical keys so no PGRST102). But the two seeded tickets are stored with geog NULL. In report_civic, st_dwithin(t.geog, ...) evaluates to NULL for them, so the 'existing' lookup never finds them: a citizen reporting the same garbage heap opens a second CIV- ticket with signatures = 1 instead of turning the seeded '7 citizens' ticket into 8. They are also invisible to civic_geog_idx / any spatial query. Console pins are unaffected (console uses t.lat / t.lng). Practical impact is limited because the seeded heap sits about 1.2 km from the demo point, but the collective-weight feature silently does not work for seeded rows.",
+   "fix": "Insert directly after line 62 (`create index if not exists civic_geog_idx on civic_tickets using gist (geog);`) in C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql:\n\n-- Direct inserts (seed script, console) only send lat/lng: derive geog the same way requests does (0002).\ndrop trigger if exists civic_tickets_geog on civic_tickets;\ncreate trigger civic_tickets_geog before insert or update of lat, lng on civic_tickets\n  for each row execute function requests_sync_geog();\nupdate civic_tickets set geog = st_makepoint(lng, lat)::geography where geog is null;",
+   "why": "The claim is real, but it will not cause a failed run, so I rate it minor. It does not block migration 0004 and does not break the seed insert.\n\n**Why it is real**\n- `civic_tickets.geog` (`C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql` line 53) is nullable with no default. Nothing in 0004 derives it from `lat`/`lng`.\n- The `requests_geog` trigger in `C:\\dk\\supabase\\migrations\\0002_request_latlng.sql` is attached only to `requests`.\n- `C:\\dk\\mobile\\scripts\\seed-demo.mjs` lines 50-53 inserts two rows through PostgREST with no `geog` key. Both objects have identical keys and supply every required column, so the insert succeeds with `geog` NULL.\n- In `report_civic` (lines 96-99), `st_dwit"
+  },
+  {
+   "title": "report_civic fails with a foreign-key error when the phone's saved customer profile no longer exists; the app never recovers on this path",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 108,
+   "dimension": "callers",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "C:\\dk\\mobile\\src\\app\\report.tsx line 70-71: reporterId = (await savedCustomer())?.profileId, then C:\\dk\\mobile\\src\\lib\\civic.ts line 67 rpc('report_civic', { p_reporter: <uuid of a profiles row that was deleted>, ... }). This is the same 'profile wiped from the server' situation requests.ts handles with IdentityGone (23503) for bookings.",
+   "effect": "PostgREST returns HTTP 409, code 23503: insert or update on table \"civic_tickets\" violates foreign key constraint \"civic_tickets_reporter_id_fkey\". civic.ts wraps it in BackendError, report.tsx shows the generic backend notice, and every retry fails identically because nothing on the civic path calls forgetCustomer(). Only reachable after profiles rows are deleted by hand; never happens on a fresh database.",
+   "fix": "Optional hardening, not needed for the migration to run. In C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql replace lines 108-111 with:\n\n  insert into civic_tickets (reporter_id, kind, department, sla_hours, severity, lat, lng, geog, photo_url, note, signature)\n  values ((select p.id from profiles p where p.id = p_reporter), p_kind, r.department, r.sla_hours, r.severity, p_lat, p_lng,\n          st_makepoint(p_lng, p_lat)::geography, p_photo_url, p_note, p_signature)\n  returning * into made;",
+   "why": "The claim is correct as far as it goes, but it is a runtime edge case and has nothing to do with the migration run. It cannot cause another failed paste of 0004. `create function ... language plpgsql` only syntax-checks the body, and `reporter_id uuid references profiles(id)` is a valid column definition.\n\n**What is true**\n- `civic_tickets.reporter_id` (`0004` line 46) is a plain foreign key to `profiles(id)`, nullable, with no `ON DELETE` action.\n- `report_civic` is security invoker and inserts `p_reporter` as-is at lines 108-109.\n- `report.tsx` line 70-71 passes `savedCustomer()?.profileId` straight from AsyncStorage with no server check.\n- If that profiles row is gone, the insert fails wi"
+  },
+  {
+   "title": "report_civic fails with a foreign-key error when the phone's saved profile no longer exists on the server",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 108,
+   "dimension": "runtime",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "C:\\dk\\mobile\\src\\app\\report.tsx line 71 passes reporterId = savedCustomer()?.profileId. C:\\dk\\mobile\\src\\lib\\civic.ts line 67 then calls rpc('report_civic', { p_reporter: <that uuid>, ... }). If that profile row is gone (deleted in the dashboard, test cleanup, database reset), the statement `insert into civic_tickets (reporter_id, ...) values (p_reporter, ...)` fails. This is the same stale-identity case the booking flow already handles as IdentityGone in requests.ts and request.tsx.",
+   "effect": "ERROR 23503: insert or update on table \"civic_tickets\" violates foreign key constraint \"civic_tickets_reporter_id_fkey\". PostgREST returns 409 and report.tsx shows the generic backend-error notice. Every retry fails the same way, because nothing on the civic path forgets the stale identity. Only the new-ticket branch touches the foreign key (the 'signed' branch writes text to civic_events), so the same phone can sign an existing ticket but cannot open a new one. A second defect is covered by the same replacement function: an unknown p_kind makes civic_route return NULLs, and the insert then fails with the misleading ERROR 23502 null value in column \"department\" of relation \"civic_tickets\" violates not-null constraint. NOT NULL is checked before the kind CHECK, so the message never names the bad kind.",
+   "fix": "In C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql, inside report_civic, replace line 109\n\n  values (p_reporter, p_kind, r.department, r.sla_hours, r.severity, p_lat, p_lng,\n\nwith\n\n  values ((select p.id from profiles p where p.id = p_reporter), p_kind, r.department, r.sla_hours, r.severity, p_lat, p_lng,\n\n(Everything else in the function stays as is. A stale or unknown profile id then becomes a NULL reporter_id, which the nullable FK accepts, instead of raising 23503.)",
+   "why": "**Verdict:** the defect is real but minor. It is a runtime edge case and does not block the migration.\n\n**Migration run:** migration 0004 will apply cleanly as far as this claim goes. `plpgsql` bodies are only syntax-checked when the function is created, and `report_civic` as written is valid.\n\n**Mechanism confirmed:**\n- `civic_tickets.reporter_id` is declared `uuid references profiles(id)` at line 46 of 0004. It has no `ON DELETE` action and is not deferrable.\n- The new-ticket branch inserts `p_reporter` verbatim (lines 108-109).\n- `report.tsx` line 71 passes `savedCustomer()?.profileId`, which is read from AsyncStorage and never checked against the server.\n- If that profile row is gone, th"
+  },
+  {
+   "title": "Tickets inserted directly (seed-demo.mjs) have NULL geog and are invisible to the 60 m duplicate search",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 53,
+   "dimension": "runtime",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "C:\\dk\\mobile\\scripts\\seed-demo.mjs lines 50-53 run db.from('civic_tickets').insert([{ kind: 'garbage', lat, lng, signatures: 7, ... }]) with no geog, and nothing fills geog from lat/lng. A later select report_civic(null, 'garbage', <same lat>, <same lng>) evaluates st_dwithin(t.geog, ..., 60) with t.geog NULL, which is NULL, so the row is filtered out.",
+   "effect": "No error is raised. report_civic opens a second ticket on top of the seeded one instead of adding a signature, and the seeded 'reported by 7 citizens' ticket can never gain a signature. The console map is not affected, because it pins from t.lat and t.lng, which are NOT NULL. Tickets on requests avoid this because 0002 added the requests_sync_geog trigger; civic_tickets has no equivalent.",
+   "fix": "Insert immediately after line 62 (`create index if not exists civic_geog_idx on civic_tickets using gist (geog);`):\n\n-- Rows inserted without geog (seed-demo.mjs, the console) must still be found by the 60 m duplicate search.\ncreate or replace function civic_sync_geog() returns trigger language plpgsql as $$\nbegin\n  new.geog := st_makepoint(new.lng, new.lat)::geography;\n  return new;\nend $$;\ndrop trigger if exists civic_tickets_geog on civic_tickets;\ncreate trigger civic_tickets_geog before insert or update of lat, lng on civic_tickets\n  for each row execute function civic_sync_geog();\nupdate civic_tickets set geog = st_makepoint(lng, lat)::geography where geog is null;",
+   "why": "The claim is real, but it will not cause another failed run. I verified it by reading the files; nothing was executed.\n\n**Why the defect is real**\n- In `C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql`, `civic_tickets.geog` (line 53) is nullable, with no default and no generated expression. Only the insert inside `report_civic` (lines 108-110) ever sets it.\n- A search of `C:\\dk` found no trigger or function anywhere that fills `civic_tickets.geog`. The only such trigger is `requests_sync_geog` in `0002_request_latlng.sql`, and it is bound to `requests`.\n- `C:\\dk\\mobile\\scripts\\seed-demo.mjs` lines 50-53 insert two rows through PostgREST with `lat` and `lng` but no `geog`. The insert suc"
+  },
+  {
+   "title": "The same citizen is counted twice when a report is retried after a lost reply",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 102,
+   "dimension": "runtime",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "C:\\dk\\mobile\\src\\app\\report.tsx send(): the first rpc('report_civic') commits but the HTTP reply is lost on a weak connection, so the screen shows the backend notice and the citizen taps Send again. It also happens when the same phone reports the same problem twice. The second call finds the citizen's own open ticket within 60 m and runs `update civic_tickets set signatures = signatures + 1`.",
+   "effect": "No error is raised. signatures becomes 2 and a 'signed' event is written for a single person, so C:\\dk\\mobile\\src\\app\\civic\\[id].tsx shows '2 citizens' and the console shows 'reported by 2 citizens'. The collective-weight number is inflated by one on every retry. There is no idempotency key like the client_id used for requests.",
+   "fix": "Optional - not required for the migration to run. In C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql, replace line 101:\n\n  if found then\n\nwith:\n\n  if found then\n    -- The same registered citizen retrying or re-reporting: count them once.\n    if p_reporter is not null and (existing.reporter_id = p_reporter or exists (\n         select 1 from civic_events e where e.ticket_id = existing.id and e.by_whom = p_reporter::text)) then\n      return existing;\n    end if;\n\n(Lines 102-105 stay as they are. Use p_reporter, not `who` - no variable named `who` exists in this function. Anonymous reporters with p_reporter null still cannot be de-duplicated.)",
+   "why": "The claim is real, but it is a design gap and not a migration error. It will not make 0004 fail in the SQL editor, so nothing has to change before the next run.\n\n**What happens now (C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql, lines 96-105):**\n- `report_civic` looks up any open, reopened or resolved_claimed ticket of the same kind within 60 m.\n- If it finds one, it always runs `update civic_tickets set signatures = signatures + 1` and inserts a 'signed' event.\n- It never compares `existing.reporter_id` or `civic_events.by_whom` with `p_reporter`.\n- The table has no unique constraint or idempotency key that would stop a second signature from the same person.\n\n**Why the trigger is rea"
+  },
+  {
+   "title": "Rejecting a duplicate verification removes the badge that was just approved",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 31,
+   "dimension": "runtime",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "A worker ends up with two pending verifications rows. This happens when the insert reply in verify-me.tsx is lost and the worker taps Send again. It also happens when the verifications query in the WorkerHome.tsx Badge fails: the code checks only w.error, falls through to state 'none', and offers 'Get verified' again. The console operator clicks Approve on one row (verified = true), then clicks Reject on the leftover duplicate. That runs update verifications set status = 'rejected', which fires apply_verification with `verified = (new.status = 'approved')`, which evaluates to false.",
+   "effect": "No error is raised. workers.verified flips back to false, verified_by becomes NULL, and refresh_tier demotes a 'star' worker to 'trusted', seconds after the console toasted 'Approved. The Verified badge is now live'. The worker's phone then shows the rejected notice. The trigger itself is otherwise sound: refresh_tier(uuid) exists in 0003, workers has no triggers so nothing recurses, and the anon role has the privileges and open policies it needs.",
+   "fix": "Replace line 31 of C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql (the single `update workers set verified = (new.status = 'approved'), ...` line) with:\n\n    if new.status = 'approved' then\n      update workers set verified = true, verified_by = new.reviewed_by where profile_id = new.worker_id;\n    elsif not exists (select 1 from verifications v where v.worker_id = new.worker_id and v.status = 'approved') then\n      update workers set verified = false, verified_by = null where profile_id = new.worker_id;\n    end if;\n\nLeave the surrounding `if new.status is distinct from old.status ...`, `perform refresh_tier(new.worker_id);`, `end if; return new;` lines unchanged.",
+   "why": "The claim is real, but it is an edge case. It does not stop 0004 from applying, and nothing in the trigger causes a migration error. Treat the fix as optional and low-risk, not as the next failed run.\n\n**Why it is real**\n- In 0004, lines 30-31 run whenever a row's status changes to 'approved' or 'rejected'. They set `workers.verified = (new.status = 'approved')` without looking at the worker's other verification rows.\n- The `verifications` table in 0001 (lines 102-109) has no unique constraint on `worker_id` or on `(worker_id, status)`. Two pending rows for one worker are therefore allowed.\n- The console (`console.js` line 60) lists every pending row. Each row gets Approve and Reject buttons"
+  },
+  {
+   "title": "Two simultaneous reports of the same problem create two tickets instead of one ticket with two signatures",
+   "file": "C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql",
+   "line": 96,
+   "dimension": "runtime",
+   "severity": "minor",
+   "confidence": "high",
+   "trigger": "Two phones call rpc('report_civic', { p_kind: 'garbage', <points within 60 m> }) in overlapping transactions. PostgREST runs at READ COMMITTED. Both `select * into existing ...` statements run before either insert commits, so both see no row, FOUND is false in both, and both insert.",
+   "effect": "No error is raised, because no unique constraint covers kind plus location. Two open tickets with different serials and signatures = 1 each sit at the same spot. Later reporters sign only the nearer one, so the weight is split for good. The window is small but real in a two-phone demo of the 'one loud ticket' feature.",
+   "fix": "Optional; not needed for the migration to succeed. In `C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql`, insert this line directly after `begin` (line 95) and before `select * into existing ...` (line 96):\n\n  perform pg_advisory_xact_lock(hashtext('report_civic:' || p_kind));\n\nLeave `if found then` directly after the `select * into existing ...` statement, because `PERFORM` also sets `FOUND`.",
+   "why": "The race is real, but it is only a rare behavioural edge. It cannot cause another failed run of migration 0004 and it produces no error message. The fix is optional hardening. Editing the SQL for it is not required before re-running the migration.\n\n**Why the race is real**\n- `report_civic` (`C:\\dk\\supabase\\migrations\\0004_media_trust_civic.sql`, lines 87-114) is a default VOLATILE plpgsql function. PostgREST calls it inside a READ COMMITTED transaction.\n- The duplicate search at lines 96-99 is a plain `SELECT ... INTO` with no lock.\n- `civic_tickets` has no unique or exclusion constraint on kind plus location. Its only constraints are the primary key on `id` and the unique on `serial`, which"
+  }
+ ],
+ "rejected": []
+}

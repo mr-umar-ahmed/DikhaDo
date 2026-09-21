@@ -28,6 +28,14 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 
 ## Phases 4-6 — *Hear*, media on the job, console, offline queue (built; physical gates open)
 
+**2026-09-21 · Migration 0004 applied and verified live; 0005 hardening written** · _this commit_
+- 0004's first run failed (`42P13`, my bug: `civic_route` selected four columns for three OUT parameters; it had never been executed because the anon key cannot run DDL and this machine has no Postgres). Fixed in `ea02ae9`; the editor's single transaction meant nothing was half-applied. **Second run succeeded.**
+- `scripts/civic-test.mjs` - **24 live checks green:** routing table picks department / deadline / severity; a report 30 m away adds a signature, 250 m away or a different kind does not; unknown kind refused; department marks resolved → citizen "still there" **reopens** and the false closure stays in the history (`reported > signed > reopened_false_closure > verified_fixed`); `job-media` public, `kyc` private but readable through a signed link; approving on the console turns the badge on; jobs carry transcript, urgency, photo and voice links. Cleans up after itself.
+- Booking flow re-verified after the schema change: `lifecycle-test.mjs` 33/33, realtime median 503 ms.
+- Panchayat demo history seeded; console verified showing it (red row "late by 8 h", red pin; indigo pin with time left).
+- A 15-agent static review of 0004 (`docs/review-migration-0004.json`): 11 findings, 0 blocking, collapsing to **5 real minor issues** → `0005_civic_hardening.sql`: geography for directly-inserted tickets (+ backfill), a vanished reporter becomes an anonymous citizen instead of an FK error, an advisory lock so simultaneous reports make one ticket, a retried report does not count a citizen twice, rejecting a duplicate ID no longer removes an approved badge. Tests written first: 5 fail today, as they should. **0005 needs to be run by you.**
+- Release APK builds (arm64): 75.9 MB. Breakdown and the three levers are in the hand-over notes; native-library compression enabled via `expo-build-properties`, rebuild in progress. First failure was the disk (99% full), not the code.
+
 **2026-09-21 · Sahayak desk, demo history, docs** · _this commit_
 - **Sahayak mode is real** (the last placeholder in the app is gone): a CSC operator or neighbour enters a walk-in customer's name and phone and books in *their* name - the worker calls them, the rating is theirs - then clears the desk for the next person. Reuses the whole customer flow under an indigo "Booking for …" banner.
 - `scripts/seed-demo.mjs` - three finished, paid, rated jobs (walked through the real state machine) and two panchayat reports, one already past its deadline. Ran against the live database: jobs created (`DKD-2026-000013…15`); reports wait for migration 0004. Console verified showing them: 3 jobs today, ₹630 earned.
