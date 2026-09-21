@@ -9,7 +9,7 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 | 0 | Scaffold: tokens, fonts, en/hi/te, roles, schema | ✅ done | passed (emulator + phone) |
 | 1 | Directory spine: picker → on-duty workers → call / WhatsApp | ✅ done | passed on phone |
 | 2 | Job lifecycle: request → accept → track → pay → rate | ✅ done, reviewed, hardened | one-phone loop passed · two-phone < 60 s timing **open** |
-| 3 | Local AI I — *See*: camera, on-device classifier, quality gate, safety card | 🔨 in progress | — |
+| 3 | Local AI I — *See*: camera, on-device classifier, quality gate, safety card | 🔨 working on phone (72 ms) · fine-tuned model + `ml/` pending | airplane-mode 10-snap gate **open** |
 | 4 | Local AI II — *Hear*: on-device speech → category; photo + voice on the job | ⏳ | — |
 | 5 | Trust + Department Console | ⏳ | — |
 | 6 | One-bar resilience + Sahayak mode | ⏳ | — |
@@ -28,6 +28,16 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 ---
 
 ## Phase 3 — Local AI I: *See* (in progress)
+
+**2026-09-21 · The lens: camera → on-device diagnosis, working on the phone** · _this commit_
+First end-to-end run on the Redmi Note 13 Pro+: shutter → upright photo → centre-crop → 224×224 RGB → MobileNetV3-Small on CPU → **72 ms** → paper sheet. Pointed at a wall socket, the stock ImageNet model was not confident and *said so* ("Is it this? Fan and appliances") instead of forcing an answer — the designed behaviour; sockets and switchboards are exactly what the fine-tuned model is for.
+- `src/ai/model.ts` — model loaded once, warmed on a blank frame behind the splash (the load doubles as the capability probe: failure ⇒ Simple mode), calls serialised, softmax over logits, supports float32 and uint8 models.
+- `src/ai/capture.ts` — vision-camera 5 `capturePhoto` → nitro-image upright bitmap → crop → two-step resize → RGBA→RGB; every native bitmap disposed in `finally`.
+- `src/screens/Lens.tsx` — the lens world; the one orchestrated motion (frozen frame tucks into the header of the rising paper sheet, Reanimated 4, reduced-motion honoured); camera paused when unfocused or covered; permission and failure states all lead somewhere.
+- Customer home is now camera-first; **Simple mode** (picture grid) is one tap away, remembered, and automatic when the model cannot load.
+- Model + labels committed (`assets/models/`, 10.2 MB, Apache-2.0); provenance, checksum and integration notes in `docs/MODELS.md`.
+- A 6-agent source-reading workflow produced the verified API recipe (`docs/research-phase3-apis.json`) — vision-camera 5 / fast-tflite 3 / nitro-image are all newer than their public docs. It also caught a release-only trap (model loading via `require()` fails outside Metro), avoided with `expo-asset`.
+Open for the physical gate: ten airplane-mode snaps of a fan / switchboard / tap, each < 1 s.
 
 **2026-09-21 · Diagnosis sheet + safety card (UI)** · _this commit_
 `DiagnosisSheet` — the paper record of what the phone saw: photo in the header, "Checked on this phone. No internet used.", inference time in mono, amber class stamp with confidence, price range, then the way forward for each of the four outcomes (sure → Find workers · unsure → pick one of two · unknown → picture grid · bad photo → retake or overrule). `SafetyCard` — red-ruled advice for electrical / pump / geyser problems, read aloud once on the sheet, also shown above the workers list so the grid path gets it too. 24 new strings in en/hi/te. Not yet reachable in the app: waits for the camera screen.

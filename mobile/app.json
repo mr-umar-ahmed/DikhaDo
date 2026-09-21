@@ -42,7 +42,8 @@
         {
           "locationWhenInUsePermission": "DikhaDo uses your location to find workers near you."
         }
-      ]
+      ],
+      "expo-asset"
     ]
   }
 }

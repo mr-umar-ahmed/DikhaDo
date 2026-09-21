@@ -96,7 +96,7 @@ export function DiagnosisSheet({ photoUri, diagnosis, onGo, onRetake, onUseAnywa
 
       {diagnosis.kind === 'unsure' && (
         <>
-          <Text style={[type.title, { color: colors.onPaper }]}>{t('whichOne')}</Text>
+          <Text style={[type.title, { color: colors.onPaper }]}>{t(diagnosis.guesses.length === 1 ? 'isItThis' : 'whichOne')}</Text>
           {diagnosis.guesses.map((s) => tile(s))}
         </>
       )}

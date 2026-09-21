@@ -4,13 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { ChangeRoleLink } from '@/components/ChangeRoleLink';
 import { CategoryTile } from '@/components/CategoryTile';
-import { Notice, PaperScreen } from '@/components/paper';
+import { Notice, PaperScreen, PrimaryButton } from '@/components/paper';
 import { openJobId } from '@/lib/requests';
 import { childrenOf, topLevel } from '@/data/catalog';
 import { space } from '@/theme/tokens';
 
 /** The no-AI path and the Simple-mode home: a picture grid of everything that can be fixed. */
-export function CustomerHome() {
+export function CustomerHome({ onCamera }: { onCamera?: () => void }) {
   const { t } = useTranslation();
   const router = useRouter();
   const [activeJob, setActiveJob] = useState<string | null>(null);
@@ -31,6 +31,7 @@ export function CustomerHome() {
       {activeJob && (
         <Notice title={t('yourActiveJob')} action={t('openJob')} onAction={() => router.push({ pathname: '/job/[id]', params: { id: activeJob } })} />
       )}
+      {onCamera && <PrimaryButton label={t('useCamera')} icon="camera" tone="ink" onPress={onCamera} />}
       <View style={styles.grid}>
         {topLevel.map((c) => (
           <CategoryTile

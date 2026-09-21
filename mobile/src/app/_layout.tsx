@@ -3,11 +3,14 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { warmUp } from '@/ai/model';
 import { PrefsProvider, usePrefs } from '@/lib/prefs';
 import { colors } from '@/theme/tokens';
 import { fontAssets } from '@/theme/type';
 
 SplashScreen.preventAutoHideAsync();
+// Load the on-device model now, in the background. If it cannot load, the app runs in Simple mode.
+warmUp().catch(() => {});
 
 export default function RootLayout() {
   return (
