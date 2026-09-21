@@ -4,7 +4,7 @@
 
 A rural-first worker marketplace for India. Show the broken thing to the camera; a small on-device model names the problem; the app lists trusted workers who are on duty nearby, with a price range, before you ever make a call. Works with AI switched off, on cheap phones, on weak signal. Civic reporting ("Report to panchayat") and before/after Proof of Work ride on the same camera as extras.
 
-See [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) for research, product, architecture, phases and risks.
+See [PLAN.md](PLAN.md) for the full plan (problem, local-AI layer, architecture, every phase) and [PROGRESS.md](PROGRESS.md) for what is done.
 
 ## Layout
 
