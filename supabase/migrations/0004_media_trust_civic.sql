@@ -73,7 +73,8 @@ create table if not exists civic_events (
 -- The routing table. Deterministic: the phone proposes a kind, this decides department, SLA and severity.
 create or replace function civic_route(p_kind text, out department text, out sla_hours int, out severity int)
 language sql immutable as $$
-  select * from (values
+  -- Exactly the three OUT columns, in order: `select *` would also return `kind` and fail the type check.
+  select t.department, t.sla_hours, t.severity from (values
     ('garbage',     'Sanitation (Gram Panchayat / ULB ward office)', 12, 3),
     ('drain',       'Sewerage and drainage',                        24, 4),
     ('pothole',     'Roads and works',                              72, 3),
