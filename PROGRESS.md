@@ -29,7 +29,14 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 
 ## Phase 3 — Local AI I: *See* (in progress)
 
-_Entries are added here as each feature lands._
+**2026-09-21 · AI core: label map, quality gate, safety table, diagnosis** · _this commit_
+The model-independent half of the local AI layer, in `mobile/src/ai/`, all pure functions:
+- `labelMap.ts` — ~90 ImageNet labels mapped onto catalog categories and sub-problems by word-boundary keyword; related labels add up (washer 0.30 + dishwasher 0.25 = appliance 0.55); anything else is ignored rather than forced.
+- `quality.ts` — dark / blurry gate from the same 224×224 tensor the model sees (mean luma, variance of Laplacian). Conservative thresholds; the user can overrule it.
+- `safety.ts` — catalog code → safety card (electrical, pump, geyser). A table, never a model.
+- `diagnose.ts` — one judgement per photo with three honest outcomes: *sure* (≥ 0.45), *unsure* (top two guesses), *unknown* (→ picture grid). The classifier is injected, so the TFLite model and the test fake share one interface.
+- `scripts/ai-test.ts` — 21 unit checks, green (`npx tsx scripts/ai-test.ts`).
+In flight: a 6-agent source-reading workflow extracting the exact vision-camera 5 / fast-tflite 3 / nitro-image APIs (all newer than public docs) and locating an official model.
 
 ---
 
