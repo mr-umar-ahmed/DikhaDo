@@ -58,11 +58,15 @@ npx tsx scripts/ai-test.ts                      # 48 unit checks of the on-devic
 
 ## Console
 
+**Live demo:** https://dikhado-console.netlify.app — the deployed console, reading the real production database (workers, jobs, panchayat reports). Add `?tab=civic`, `?tab=workers` or `?tab=verify` to open straight into that tab.
+
 ```bash
 cd console
 cp config.example.js config.js    # fill in the same Supabase URL and anon key
 python -m http.server 5050        # then open http://127.0.0.1:5050
 ```
+
+Redeploy after a console change: `cd console && npx netlify-cli deploy --dir=. --prod` (see `console/netlify.toml`).
 
 ## The 90-second demo
 

@@ -18,5 +18,6 @@ build-android.log
 metro.log
 
 console/config.js
+console/.netlify/
 *.log
 dist/

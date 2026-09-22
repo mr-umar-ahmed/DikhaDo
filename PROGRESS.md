@@ -30,6 +30,12 @@ Updated after every feature. The plan this tracks is [PLAN.md](PLAN.md). Newest 
 
 ## Phases 4-6 — *Hear*, media on the job, console, offline queue (built; physical gates open)
 
+**2026-09-22 · Console deployed live; submission assets built**
+- **Console deployed:** https://dikhado-console.netlify.app — the same static page, reading the real production database. `console/netlify.toml` added (`publish = "."`) so anyone can redeploy with `npx netlify-cli deploy --dir=. --prod`; `console/.netlify/` (the CLI's local site-link cache) is gitignored.
+- `console.js` — small deep-link feature: `?tab=civic` / `?tab=workers` / `?tab=verify` opens the console straight into that tab, for sharing a specific view.
+- README points at the live console link instead of only the local `python -m http.server` instructions.
+- Video walkthrough (real screens, real timings), a 10-slide pitch deck and a 23-page project document were built for the idea-screening submission — all sourced only from this log and real screenshots, nothing fabricated. Narration re-recorded with Piper (free, offline neural TTS) after the first pass used the robotic Windows SAPI voice.
+
 **2026-09-22 · Gates passed on the phone; official rules found**
 - **Migration 0005 applied** (by the user) and verified: `civic-test.mjs` 29/29, including the five hardening checks that failed before it.
 - **Voice gate passed:** the user said "fan kharab ho gaya"; the on-device recogniser transcribed it and the lexicon routed it to *Fan not working*.

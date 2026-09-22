@@ -270,6 +270,10 @@
     .on('postgres_changes', { event: '*', schema: 'public', table: 'verifications' }, load)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'civic_tickets' }, load)
     .subscribe();
+  // Deep-link a tab, e.g. console.html?tab=civic - lets a teammate share "look at the reports tab" as a URL.
+  const wantTab = new URLSearchParams(location.search).get('tab');
+  if (wantTab) document.querySelector(`.tabs button[data-tab="${wantTab}"]`)?.click();
+
   setInterval(load, 5000); // the floor, for networks that block websockets
   setInterval(() => ($('clock').textContent = new Date().toLocaleTimeString('en-IN', { hour12: false })), 1000);
   load();
